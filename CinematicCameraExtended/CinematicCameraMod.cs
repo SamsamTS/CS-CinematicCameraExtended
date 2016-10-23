@@ -1,12 +1,23 @@
 using ICities;
-using System;
 using UnityEngine;
+
+using ColossalFramework;
 
 namespace CinematicCameraExtended
 {
     public class CinematicCameraMod : LoadingExtensionBase
     {
         public GameObject cameraDirector;
+
+        public CinematicCameraMod()
+        {
+            try
+            {
+                // Creating setting file
+                GameSettings.AddSettingsFile(new SettingsFile[] { new SettingsFile() { fileName = "CinematicCameraExtended" } });
+            }
+            catch {}
+        }
 
         public override void OnLevelLoaded(LoadMode mode)
         {

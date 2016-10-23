@@ -19,6 +19,11 @@ namespace CinematicCameraExtended
 
         public static EventSystem eventSystem;
 
+        public static readonly SavedInputKey toggleUI = new SavedInputKey("toggleUI", "CinematicCameraExtended", SavedInputKey.Encode(KeyCode.C, false, false, false), false);
+        public static readonly SavedInputKey stopPlaying = new SavedInputKey("stopPlaying", "CinematicCameraExtended", SavedInputKey.Encode(KeyCode.X, false, false, false), false);
+
+        private bool m_showUI = false;
+
         private void Start()
         {
             base.StartCoroutine(this.ConstructUI());
@@ -40,10 +45,17 @@ namespace CinematicCameraExtended
 
         private void Update()
         {
-            LoadingManager arg_05_0 = Singleton<LoadingManager>.instance;
+            if(toggleUI.IsKeyUp())
+            {
+                m_showUI = !m_showUI;
+            }
+            else if (stopPlaying.IsKeyUp() && cameraPath.playBack)
+            {
+                cameraPath.Stop();
+            }
             if (this.movieUI)
             {
-                this.movieUI.SetActive(!this.uiCamera.enabled && !this.cameraPath.playBack);
+                this.movieUI.SetActive(m_showUI && !this.cameraPath.playBack);
             }
         }
 

@@ -112,9 +112,14 @@ namespace CinematicCameraExtended
         {
             if (this.playBack && !CameraPath.MoveCamera(this.time, this.cameraTransform, this.knots, this.positions, out this.time))
             {
-                this.playBack = false;
-                this.cameraTransform.GetComponent<CameraController>().enabled = true;
+                Stop();
             }
+        }
+
+        public void Stop()
+        {
+            this.playBack = false;
+            this.cameraTransform.GetComponent<CameraController>().enabled = true;
         }
 
         public static System.Collections.IEnumerator MoveCameraAsync(float time, Transform camera, System.Collections.Generic.List<Knot> knots, Vector3[] points)
