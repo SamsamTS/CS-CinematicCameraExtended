@@ -1,152 +1,165 @@
 using System;
+using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
+
+using ColossalFramework;
+using ColossalFramework.UI;
 
 namespace CinematicCameraExtended
 {
     public class CameraPath : MonoBehaviour
     {
-        public Transform cameraTransform;
+        public static Camera camera;
+        public static CameraController cameraController;
 
-        public System.Collections.Generic.List<Knot> knots = new System.Collections.Generic.List<Knot>();
-
-        public Vector3[] positions;
+        public FastList<object> knots = new FastList<object>();
 
         public bool playBack;
-
         public float time;
 
+        public static bool freeCamera = true;
+        public static float originalFov;
+
         public static float scrubTime;
+        public static Knot currentTransfrom;
+
+        private object m_simulationFrameLock;
+        private MethodInfo simulationStep;
 
         private void Start()
         {
             CameraPath.scrubTime = 0f;
+            simulationStep = typeof(SimulationManager).GetMethod("SimulationStep", BindingFlags.NonPublic | BindingFlags.Instance);
+            m_simulationFrameLock = typeof(SimulationManager).GetField("m_simulationFrameLock", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(SimulationManager.instance);
         }
 
-        public int AddKnot(Vector3 position, Quaternion rotation)
+        public int AddKnot()
         {
-            this.knots.Add(new Knot
-            {
-                rotation = rotation
-            });
-            Vector3[] array = new Vector3[this.knots.Count];
-            for (int i = 0; i < this.knots.Count - 1; i++)
-            {
-                array[i] = this.positions[i];
-            }
-            array[this.knots.Count - 1] = position;
-            this.positions = array;
-            return this.knots.Count - 1;
-        }
-
-        public void RemoveKnot(int index)
-        {
-            this.knots.RemoveAt(index);
-            Vector3[] array = new Vector3[this.knots.Count];
-            for (int i = 0; i < index; i++)
-            {
-                array[i] = this.positions[i];
-            }
-            for (int j = index; j < this.knots.Count; j++)
-            {
-                array[j] = this.positions[j + 1];
-            }
-            this.positions = array;
-        }
-
-        public Knot GetKnot(int index)
-        {
-            return this.knots[index];
-        }
-
-        public Vector3 GetPosition(int index)
-        {
-            return this.positions[index];
-        }
-
-        public void SetPosition(int index, Vector3 position)
-        {
-            this.positions[index] = position;
+            knots.Add(new Knot());
+            return knots.m_size - 1;
         }
 
         public float CalculateTotalDuraction()
         {
-            if (this.knots.Count == 0)
+            if (knots.m_size == 0)
             {
                 return 0f;
             }
             float num = 0f;
-            foreach (Knot current in this.knots)
+            for (int i = 0; i < knots.m_size ; i++ )
             {
-                num += current.delay + current.duration;
+                Knot knot = (Knot)knots.m_buffer[i];
+                num += knot.delay + knot.duration;
             }
-            return num - this.knots[this.knots.Count - 1].duration - 0.001f;
+            return num - ((Knot)knots.m_buffer[knots.m_size - 1]).duration - 0.001f;
         }
 
         public void Play()
         {
-            if (!this.playBack && this.knots.Count > 1)
+            if (!playBack && knots.m_size > 1)
             {
-                this.time = 0f;
-                this.playBack = true;
-                this.cameraTransform.GetComponent<CameraController>().enabled = false;
+                /*while (!Monitor.TryEnter(m_simulationFrameLock, SimulationManager.SYNCHRONIZE_TIMEOUT))
+                {
+                }
+                try
+                {
+                    SimulationManager.instance.m_simulationThread.Suspend();
+                }
+                finally
+                {
+                    Monitor.Exit(m_simulationFrameLock);
+                }*/
+
+                currentTransfrom = new Knot();
+
+                CameraDirector.mainWindow.isVisible = false;
+                SetFreeCamera(freeCamera);
+
+                if(freeCamera)
+                {
+                    ((Knot)knots.m_buffer[0]).delay += 0.5f;
+                    Cursor.visible = false;
+                }
+
+                time = 0f;
+                playBack = true;
+                camera.GetComponent<CameraController>().enabled = false;
             }
         }
 
         public void SetToTime(float time)
         {
-            if (this.knots.Count > 1)
+            if (knots.m_size > 1)
             {
                 CameraPath.scrubTime = Time.time;
-                if (!this.cameraTransform.GetComponent<CameraController>().enabled)
+                if (!cameraController.enabled)
                 {
-                    CameraPath.MoveCamera(time, this.cameraTransform, this.knots, this.positions, out time);
+                    CameraPath.MoveCamera(time, camera, knots, out time);
                     return;
                 }
-                base.StartCoroutine(CameraPath.MoveCameraAsync(time, this.cameraTransform, this.knots, this.positions));
+                base.StartCoroutine(CameraPath.MoveCameraAsync(time, camera, knots));
             }
         }
 
         public void Update()
         {
-            if (this.playBack && !CameraPath.MoveCamera(this.time, this.cameraTransform, this.knots, this.positions, out this.time))
+            if (playBack)
             {
-                Stop();
+                if (!CameraPath.MoveCamera(time, camera, knots, out time))
+                {
+                    Stop();
+                }
+                /*else
+                {
+                    simulationStep.Invoke(SimulationManager.instance, null);
+                }*/
             }
         }
 
         public void Stop()
         {
-            this.playBack = false;
-            this.cameraTransform.GetComponent<CameraController>().enabled = true;
+            CameraDirector.mainWindow.isVisible = true;
+            SetFreeCamera(false);
+
+            if (freeCamera)
+            {
+                ((Knot)knots.m_buffer[0]).delay -= 0.5f;
+                Cursor.visible = true;
+            }
+
+            playBack = false;
+            cameraController.enabled = true;
+            camera.fieldOfView = originalFov;
+            /*SimulationManager.instance.m_simulationThread.Resume();*/
         }
 
-        public static System.Collections.IEnumerator MoveCameraAsync(float time, Transform camera, System.Collections.Generic.List<Knot> knots, Vector3[] points)
+        public static System.Collections.IEnumerator MoveCameraAsync(float time, Camera camera, FastList<object> knots)
         {
-            CameraController component = camera.GetComponent<CameraController>();
-            component.enabled = false;
+            cameraController.enabled = false;
             yield return new WaitForSeconds(0.01f);
             float num;
-            CameraPath.MoveCamera(time, camera, knots, points, out num);
+            CameraPath.MoveCamera(time, camera, knots, out num);
             do
             {
                 yield return new WaitForSeconds(0.05f);
             }
             while (Time.time - CameraPath.scrubTime < 0.03f || Input.GetMouseButton(0));
-            component.enabled = true;
-            CameraPath.SetCitiesCameraTransform(camera, camera.position, camera.rotation);
+            cameraController.enabled = true;
+            CameraPath.SetCitiesCameraTransform(currentTransfrom);
             yield break;
         }
 
-        public static bool MoveCamera(float time, Transform camera, System.Collections.Generic.List<Knot> knots, Vector3[] points, out float timeOut)
+        public static bool MoveCamera(float time, Camera camera, FastList<object> knots, out float timeOut)
         {
             bool flag = true;
             int num = 0;
             float num2 = 0f;
-            for (int i = 0; i < knots.Count; i++)
+            for (int i = 0; i < knots.m_size; i++)
             {
-                Knot knot = knots[i];
+                Knot knot = (Knot)knots.m_buffer[i];
                 float num3 = knot.duration + knot.delay;
                 if (time < num2 + num3)
                 {
@@ -156,45 +169,49 @@ namespace CinematicCameraExtended
                 num2 += num3;
             }
             bool flag2 = false;
-            if (num + 1 >= knots.Count)
+            if (num + 1 >= knots.m_size)
             {
-                num = knots.Count - 2;
+                num = knots.m_size - 2;
                 flag2 = true;
-                if (time > num2 + knots[knots.Count - 1].delay)
+                if (time > num2 + ((Knot)knots.m_buffer[knots.m_size - 1]).delay)
                 {
                     flag2 = false;
                     flag = false;
                     num = 0;
                 }
             }
-            float num4 = time - num2;
-            if (num4 >= knots[num].delay && flag && !flag2)
+            float t = time - num2;
+            if (t >= ((Knot)knots.m_buffer[num]).delay && flag && !flag2)
             {
-                num4 -= knots[num].delay;
-                switch (knots[num].mode)
+                t -= ((Knot)knots.m_buffer[num]).delay;
+                switch (((Knot)knots.m_buffer[num]).mode)
                 {
                     case EasingMode.None:
-                        num4 /= knots[num].duration;
+                        t /= ((Knot)knots.m_buffer[num]).duration;
                         break;
                     case EasingMode.EaseIn:
-                        num4 = CameraPath.EaseInQuad(num4, 0f, 1f, knots[num].duration);
+                        t = CameraPath.EaseInQuad(t, 0f, 1f, ((Knot)knots.m_buffer[num]).duration);
                         break;
                     case EasingMode.EaseOut:
-                        num4 = CameraPath.EaseOutQuad(num4, 0f, 1f, knots[num].duration);
+                        t = CameraPath.EaseOutQuad(t, 0f, 1f, ((Knot)knots.m_buffer[num]).duration);
                         break;
                     case EasingMode.EaseInOut:
-                        num4 = CameraPath.EaseInOutQuad(num4, 0f, 1f, knots[num].duration);
+                        t = CameraPath.EaseInOutQuad(t, 0f, 1f, ((Knot)knots.m_buffer[num]).duration);
                         break;
                 }
             }
             else
             {
-                num4 = (float)(flag2 ? 1 : 0);
+                t = (float)(flag2 ? 1 : 0);
             }
-            Vector3 position = Spline.CalculateSplinePosition(points, num, num4);
-            Quaternion rotation = Quaternion.Slerp(knots[num].rotation, knots[num + 1].rotation, num4);
-            camera.position = position;
-            camera.rotation = rotation;
+            Vector3 position = Spline.CalculateSplinePosition(knots.m_buffer, knots.m_size, num, t);
+            Quaternion rotation = Quaternion.Slerp(((Knot)knots.m_buffer[num]).rotation, ((Knot)knots.m_buffer[num + 1]).rotation, t);
+            float fov = Mathf.Lerp(((Knot)knots.m_buffer[num]).fov, ((Knot)knots.m_buffer[num + 1]).fov, t);
+
+            camera.transform.position = position;
+            camera.transform.rotation = rotation;
+            camera.fieldOfView = fov;
+
             time += Time.deltaTime;
             timeOut = time;
             return flag;
@@ -223,15 +240,14 @@ namespace CinematicCameraExtended
             return -c * t * (t - 2f) + b;
         }
 
-        public static void SetCitiesCameraTransform(Transform camera, Vector3 position, Quaternion rotation)
+        public static void SetCitiesCameraTransform(Knot knot)
         {
-            CameraController component = camera.GetComponent<CameraController>();
-            component.m_currentPosition = position;
-            component.m_targetPosition = component.m_currentPosition;
-            Vector3 eulerAngles = rotation.eulerAngles;
-            eulerAngles.Set(CameraPath.NormalizeAngle(eulerAngles.y), CameraPath.NormalizeAngle(eulerAngles.x), 0f);
-            component.m_currentAngle = eulerAngles;
-            component.m_targetAngle = eulerAngles;
+            cameraController.m_currentPosition = knot.controllerPosition;
+            cameraController.m_targetPosition = knot.controllerPosition;
+            cameraController.m_currentAngle = knot.controllerAngle;
+            cameraController.m_targetAngle = knot.controllerAngle;
+            camera.fieldOfView = knot.fov;
+            CameraDirector.mainWindow.fovSlider.value = knot.fov * 2f;
         }
 
         public static float NormalizeAngle(float angle)
@@ -241,6 +257,28 @@ namespace CinematicCameraExtended
                 angle -= 360f;
             }
             return angle;
+        }
+
+        public static void SetFreeCamera(bool value)
+        {
+            if (UIView.isVisible == value)
+            {
+                UIView.Show(!value);
+                NotificationManager.instance.NotificationsVisible = !value;
+                GameAreaManager.instance.BordersVisible = !value;
+                DistrictManager.instance.NamesVisible = !value;
+                PropManager.instance.MarkersVisible = !value;
+                GuideManager.instance.TutorialDisabled = value;
+
+                if (value)
+                {
+                    camera.rect = new Rect(0f, 0f, 1f, 1f);
+                }
+                else
+                {
+                    camera.rect = new Rect(0f, 0.105f, 1f, 0.895f);
+                }
+            }
         }
     }
 }

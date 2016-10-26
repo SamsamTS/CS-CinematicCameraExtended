@@ -20,5 +20,7 @@ namespace CinematicCameraExtended
                 return "Extended version of Icob's Cinematic Camera.";
             }
         }
+
+        public const string version = "0.1.1";
     }
 }

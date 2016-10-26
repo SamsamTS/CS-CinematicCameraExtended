@@ -53,17 +53,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AddKnotButton.cs" />
     <Compile Include="CameraDirector.cs" />
     <Compile Include="CameraPath.cs" />
     <Compile Include="CinematicCameraInfo.cs" />
-    <Compile Include="CinematicCameraMod.cs" />
+    <Compile Include="CinematicCameraExtended.cs" />
+    <Compile Include="DebugUtils.cs" />
     <Compile Include="Knot.cs" />
-    <Compile Include="ListItem.cs" />
-    <Compile Include="PlayButton.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Spline.cs" />
-    <Compile Include="TimeLineSlider.cs" />
+    <Compile Include="UIFastList.cs" />
+    <Compile Include="UIKnotsListRow.cs" />
+    <Compile Include="UIMainWindow.cs" />
     <Compile Include="UIUtils.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
