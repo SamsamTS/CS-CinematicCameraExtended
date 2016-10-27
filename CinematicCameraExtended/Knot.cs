@@ -29,14 +29,14 @@ namespace CinematicCameraExtended
 
         public Knot()
         {
-            controllerPosition = CameraPath.cameraController.m_currentPosition;
-            controllerAngle = CameraPath.cameraController.m_currentAngle;
-            controllerSize = CameraPath.cameraController.m_currentSize;
-            controllerHeight = CameraPath.cameraController.m_currentHeight;
+            controllerPosition = CameraDirector.cameraController.m_currentPosition;
+            controllerAngle = CameraDirector.cameraController.m_currentAngle;
+            controllerSize = CameraDirector.cameraController.m_currentSize;
+            controllerHeight = CameraDirector.cameraController.m_currentHeight;
 
-            position = CameraPath.camera.transform.position;
-            rotation = CameraPath.camera.transform.rotation;
-            fov = CameraPath.camera.fieldOfView;
+            position = CameraDirector.camera.transform.position;
+            rotation = CameraDirector.camera.transform.rotation;
+            fov = CameraDirector.camera.fieldOfView;
         }
     }
 }

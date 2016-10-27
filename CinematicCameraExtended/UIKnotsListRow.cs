@@ -114,6 +114,17 @@ namespace CinematicCameraExtended
                 durationInput.text = knot.duration.ToString();
             };
 
+            durationInput.eventMouseWheel += (c, p) =>
+            {
+                float value;
+                if (float.TryParse(durationInput.text, out value) && value > 0)
+                {
+                    knot.duration = Mathf.Max(0, value + p.wheelDelta);
+                    durationInput.text = knot.duration.ToString();
+                }
+                p.Use();
+            };
+
             delayInput.eventTextSubmitted += (c, p) =>
             {
                 float value;
@@ -125,22 +136,44 @@ namespace CinematicCameraExtended
                 delayInput.text = knot.delay.ToString();
             };
 
+            delayInput.eventMouseWheel += (c, p) =>
+            {
+                float value;
+                if (float.TryParse(delayInput.text, out value) && value > 0)
+                {
+                    knot.delay = Mathf.Max(0, value + p.wheelDelta);
+                    delayInput.text = knot.delay.ToString();
+                }
+                p.Use();
+            };
+
             fovInput.eventTextSubmitted += (c, p) =>
             {
                 float value;
                 if (float.TryParse(p, out value))
                 {
-                    knot.fov = Mathf.Clamp(value, 20f, 179.9f) / 2f;
+                    knot.fov = Mathf.Clamp(value, 20f, 179f) / 2f;
                 }
 
                 fovInput.text = (2f * knot.fov).ToString();
             };
 
+            fovInput.eventMouseWheel += (c, p) =>
+            {
+                float value;
+                if (float.TryParse(fovInput.text, out value) && value > 0)
+                {
+                    knot.fov = Mathf.Clamp(value, 20f, 179f) / 2f;
+                    fovInput.text = (2f * knot.fov).ToString();
+                }
+                p.Use();
+            };
+
             resetButton.eventClicked += (c, p) =>
             {
-                knot.rotation = CameraPath.camera.transform.rotation;
-                knot.position = CameraPath.camera.transform.position;
-                knot.fov = CameraPath.camera.fieldOfView;
+                knot.rotation = CameraDirector.camera.transform.rotation;
+                knot.position = CameraDirector.camera.transform.position;
+                knot.fov = CameraDirector.camera.fieldOfView;
                 fovInput.text = (2f * knot.fov).ToString();
             };
 

@@ -12,17 +12,11 @@ namespace CinematicCameraExtended
 {
     public class CameraPath : MonoBehaviour
     {
-        public static Camera camera;
-        public static CameraController cameraController;
-
         public FastList<object> knots = new FastList<object>();
 
         public bool playBack;
         public float time;
-
-        public static bool freeCamera = true;
-        public static float originalFov;
-
+        
         public static float scrubTime;
         public static Knot currentTransfrom;
 
@@ -76,9 +70,9 @@ namespace CinematicCameraExtended
                 currentTransfrom = new Knot();
 
                 CameraDirector.mainWindow.isVisible = false;
-                SetFreeCamera(freeCamera);
+                CameraDirector.SetFreeCamera(CameraDirector.freeCamera);
 
-                if(freeCamera)
+                if (CameraDirector.freeCamera)
                 {
                     ((Knot)knots.m_buffer[0]).delay += 0.5f;
                     Cursor.visible = false;
@@ -86,7 +80,7 @@ namespace CinematicCameraExtended
 
                 time = 0f;
                 playBack = true;
-                camera.GetComponent<CameraController>().enabled = false;
+                CameraDirector.camera.GetComponent<CameraController>().enabled = false;
             }
         }
 
@@ -95,12 +89,12 @@ namespace CinematicCameraExtended
             if (knots.m_size > 1)
             {
                 CameraPath.scrubTime = Time.time;
-                if (!cameraController.enabled)
+                if (!CameraDirector.cameraController.enabled)
                 {
-                    CameraPath.MoveCamera(time, camera, knots, out time);
+                    CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time);
                     return;
                 }
-                base.StartCoroutine(CameraPath.MoveCameraAsync(time, camera, knots));
+                base.StartCoroutine(CameraPath.MoveCameraAsync(time, CameraDirector.camera, knots));
             }
         }
 
@@ -108,7 +102,7 @@ namespace CinematicCameraExtended
         {
             if (playBack)
             {
-                if (!CameraPath.MoveCamera(time, camera, knots, out time))
+                if (!CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time))
                 {
                     Stop();
                 }
@@ -119,26 +113,34 @@ namespace CinematicCameraExtended
             }
         }
 
+        public void LateUpdate()
+        {
+            if (playBack)
+            {
+                CameraDirector.camera.nearClipPlane = 1;
+            }
+        }
+
         public void Stop()
         {
             CameraDirector.mainWindow.isVisible = true;
-            SetFreeCamera(false);
+            CameraDirector.SetFreeCamera(false);
 
-            if (freeCamera)
+            if (CameraDirector.freeCamera)
             {
                 ((Knot)knots.m_buffer[0]).delay -= 0.5f;
                 Cursor.visible = true;
             }
 
             playBack = false;
-            cameraController.enabled = true;
-            camera.fieldOfView = originalFov;
+            CameraDirector.cameraController.enabled = true;
+            CameraDirector.camera.fieldOfView = CameraDirector.mainWindow.fovSlider.value / 2f;
             /*SimulationManager.instance.m_simulationThread.Resume();*/
         }
 
         public static System.Collections.IEnumerator MoveCameraAsync(float time, Camera camera, FastList<object> knots)
         {
-            cameraController.enabled = false;
+            CameraDirector.cameraController.enabled = false;
             yield return new WaitForSeconds(0.01f);
             float num;
             CameraPath.MoveCamera(time, camera, knots, out num);
@@ -147,7 +149,7 @@ namespace CinematicCameraExtended
                 yield return new WaitForSeconds(0.05f);
             }
             while (Time.time - CameraPath.scrubTime < 0.03f || Input.GetMouseButton(0));
-            cameraController.enabled = true;
+            CameraDirector.cameraController.enabled = true;
             CameraPath.SetCitiesCameraTransform(currentTransfrom);
             yield break;
         }
@@ -242,11 +244,11 @@ namespace CinematicCameraExtended
 
         public static void SetCitiesCameraTransform(Knot knot)
         {
-            cameraController.m_currentPosition = knot.controllerPosition;
-            cameraController.m_targetPosition = knot.controllerPosition;
-            cameraController.m_currentAngle = knot.controllerAngle;
-            cameraController.m_targetAngle = knot.controllerAngle;
-            camera.fieldOfView = knot.fov;
+            CameraDirector.cameraController.m_currentPosition = knot.controllerPosition;
+            CameraDirector.cameraController.m_targetPosition = knot.controllerPosition;
+            CameraDirector.cameraController.m_currentAngle = knot.controllerAngle;
+            CameraDirector.cameraController.m_targetAngle = knot.controllerAngle;
+            CameraDirector.camera.fieldOfView = knot.fov;
             CameraDirector.mainWindow.fovSlider.value = knot.fov * 2f;
         }
 
@@ -257,28 +259,6 @@ namespace CinematicCameraExtended
                 angle -= 360f;
             }
             return angle;
-        }
-
-        public static void SetFreeCamera(bool value)
-        {
-            if (UIView.isVisible == value)
-            {
-                UIView.Show(!value);
-                NotificationManager.instance.NotificationsVisible = !value;
-                GameAreaManager.instance.BordersVisible = !value;
-                DistrictManager.instance.NamesVisible = !value;
-                PropManager.instance.MarkersVisible = !value;
-                GuideManager.instance.TutorialDisabled = value;
-
-                if (value)
-                {
-                    camera.rect = new Rect(0f, 0f, 1f, 1f);
-                }
-                else
-                {
-                    camera.rect = new Rect(0f, 0.105f, 1f, 0.895f);
-                }
-            }
         }
     }
 }

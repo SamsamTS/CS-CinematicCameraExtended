@@ -114,7 +114,7 @@ namespace CinematicCameraExtended
             fovInput = UIUtils.CreateTextField(fovPanel);
             fovInput.name = "CCX_MainFovInput";
             fovInput.size = new Vector2(45f, 26);
-            fovInput.text = (2f * CameraPath.camera.fieldOfView).ToString();
+            fovInput.text = (2f * CameraDirector.camera.fieldOfView).ToString();
             fovInput.numericalOnly = true;
             fovInput.allowFloats = true;
             fovInput.padding.top = 6;
@@ -140,7 +140,7 @@ namespace CinematicCameraExtended
             fovSlider.minValue = 20f;
             fovSlider.maxValue = 179f;
             fovSlider.stepSize = 1f;
-            fovSlider.value = CameraPath.camera.fieldOfView * 2f;
+            fovSlider.value = CameraDirector.camera.fieldOfView * 2f;
 
             // FPS panel
             UIPanel fpsPanel = AddUIComponent<UIPanel>();
@@ -217,12 +217,12 @@ namespace CinematicCameraExtended
 
             hideUICheckBox.eventCheckChanged += (c, p) =>
             {
-                CameraPath.freeCamera = p;
+                CameraDirector.freeCamera = p;
             };
 
             fovSlider.eventValueChanged += (c, p) =>
             {
-                CameraPath.camera.fieldOfView = p / 2f;
+                CameraDirector.camera.fieldOfView = p / 2f;
                 fovInput.text = p.ToString();
             };
 
@@ -231,7 +231,7 @@ namespace CinematicCameraExtended
                 float value;
                 if (float.TryParse(p, out value))
                 {
-                    CameraPath.camera.fieldOfView = Mathf.Clamp(value, 20f, 179.9f) / 2f;
+                    CameraDirector.camera.fieldOfView = Mathf.Clamp(value, 20f, 179f) / 2f;
 
                     if(fovSlider.value != value)
                     {
@@ -239,7 +239,12 @@ namespace CinematicCameraExtended
                     }
                 }
 
-                fovInput.text = (2f * CameraPath.camera.fieldOfView).ToString();
+                fovInput.text = (2f * CameraDirector.camera.fieldOfView).ToString();
+            };
+
+            fovInput.eventMouseWheel += (c, p) =>
+            {
+                fovSlider.value += p.wheelDelta;
             };
         }
 
