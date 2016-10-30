@@ -1,14 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using UnityEngine;
-
-using ColossalFramework;
+﻿using UnityEngine;
 using ColossalFramework.UI;
 
-using SamsamTS;
 using UIUtils = SamsamTS.UIUtils;
 
 namespace CinematicCameraExtended
@@ -49,7 +41,7 @@ namespace CinematicCameraExtended
             easingDropDown.selectedValue = "InOut";
             easingDropDown.size = new Vector2(80f, 30f);
             easingDropDown.textFieldPadding.top = 7;
-            easingDropDown.relativePosition = new Vector3(focusButton.relativePosition.x + focusButton.width +8, 8);
+            easingDropDown.relativePosition = new Vector3(focusButton.relativePosition.x + focusButton.width + 8, 8);
             easingDropDown.tooltip = "Camera movement easing";
 
             durationInput = UIUtils.CreateTextField(this);
@@ -106,7 +98,7 @@ namespace CinematicCameraExtended
             durationInput.eventTextSubmitted += (c, p) =>
             {
                 float value;
-                if(float.TryParse(p, out value) && value > 0)
+                if (float.TryParse(p, out value) && value > 0)
                 {
                     knot.duration = value;
                 }
@@ -117,7 +109,7 @@ namespace CinematicCameraExtended
             durationInput.eventMouseWheel += (c, p) =>
             {
                 float value;
-                if (float.TryParse(durationInput.text, out value) && value > 0)
+                if (float.TryParse(durationInput.text, out value))
                 {
                     knot.duration = Mathf.Max(0, value + p.wheelDelta);
                     durationInput.text = knot.duration.ToString();
@@ -139,7 +131,7 @@ namespace CinematicCameraExtended
             delayInput.eventMouseWheel += (c, p) =>
             {
                 float value;
-                if (float.TryParse(delayInput.text, out value) && value > 0)
+                if (float.TryParse(delayInput.text, out value))
                 {
                     knot.delay = Mathf.Max(0, value + p.wheelDelta);
                     delayInput.text = knot.delay.ToString();
@@ -161,7 +153,7 @@ namespace CinematicCameraExtended
             fovInput.eventMouseWheel += (c, p) =>
             {
                 float value;
-                if (float.TryParse(fovInput.text, out value) && value > 0)
+                if (float.TryParse(fovInput.text, out value))
                 {
                     knot.fov = Mathf.Clamp(value, 20f, 179f) / 2f;
                     fovInput.text = (2f * knot.fov).ToString();

@@ -1,12 +1,7 @@
-using ColossalFramework;
-using ColossalFramework.Plugins;
 using ColossalFramework.UI;
 using System;
-using System.Collections;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace CinematicCameraExtended
 {
@@ -19,8 +14,13 @@ namespace CinematicCameraExtended
         public static CameraController cameraController;
 
         public static bool freeCamera = true;
+        public static bool startSimulation = false;
+        public static bool useFps = false;
+        public static float fps = 15;
         public static float originalFov = 45;
         public static bool unlimitedCamera;
+
+        public static FieldInfo m_notificationAlpha;
 
         public static object EZC_config;
         public static FieldInfo EZC_fovSmoothing;
@@ -28,19 +28,23 @@ namespace CinematicCameraExtended
 
         private void Start()
         {
+            EnsureUIComponentsLayout();
+
             cameraPath = gameObject.AddComponent<CameraPath>();
             camera = GameObject.Find("Main Camera").GetComponent<Camera>();
             cameraController = camera.GetComponent<CameraController>();
 
             unlimitedCamera = cameraController.m_unlimitedCamera;
 
+            m_notificationAlpha = typeof(NotificationManager).GetField("m_notificationAlpha", BindingFlags.NonPublic | BindingFlags.Instance);
+
             mainWindow = UIView.GetAView().AddUIComponent(typeof(UIMainWindow)) as UIMainWindow;
+            mainWindow.absolutePosition = new Vector3(UIMainWindow.savedWindowX.value, UIMainWindow.savedWindowY.value);
             mainWindow.fastList.rowsData = cameraPath.knots;
 
             try
             {
-                //var enhancedZoom = GameObject.FindObjectOfType(Type.GetType("EnhancedZoomContinued.EnhancedZoom")).GetType().GetField("instance", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
-                EZC_config = Type.GetType("EnhancedZoomContinued.EnhancedZoom").GetField("config", BindingFlags.Public | BindingFlags.Static).GetValue(null);
+                EZC_config = Type.GetType("EnhancedZoomContinued.EnhancedZoom, EnhancedZoom").GetField("config", BindingFlags.Public | BindingFlags.Static).GetValue(null);
                 EZC_fovSmoothing = EZC_config.GetType().GetField("fovSmoothing");
             }
             catch { }
@@ -96,14 +100,14 @@ namespace CinematicCameraExtended
                     }
                     else if (OptionsKeymapping.addPoint.IsKeyUp())
                     {
-                        if(mainWindow != null && mainWindow.isVisible)
+                        if (mainWindow != null && mainWindow.isVisible)
                         {
                             mainWindow.addKnotButton.SimulateClick();
                         }
                     }
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 DebugUtils.LogException(e);
             }
@@ -113,20 +117,43 @@ namespace CinematicCameraExtended
         {
             if (UIView.isVisible == value)
             {
-                UIView.Show(!value);
-                NotificationManager.instance.NotificationsVisible = !value;
-                GameAreaManager.instance.BordersVisible = !value;
-                DistrictManager.instance.NamesVisible = !value;
-                PropManager.instance.MarkersVisible = !value;
-                GuideManager.instance.TutorialDisabled = value;
-
-                if (value)
+                try
                 {
-                    camera.rect = new Rect(0f, 0f, 1f, 1f);
+                    EnsureUIComponentsLayout();
+                    UIView.Show(!value);
                 }
-                else
+                finally
                 {
-                    camera.rect = new Rect(0f, 0.105f, 1f, 0.895f);
+                    NotificationManager.instance.NotificationsVisible = !value;
+                    GameAreaManager.instance.BordersVisible = !value;
+                    DistrictManager.instance.NamesVisible = !value;
+                    PropManager.instance.MarkersVisible = !value;
+                    GuideManager.instance.TutorialDisabled = value;
+
+                    if (value)
+                    {
+                        camera.rect = new Rect(0f, 0f, 1f, 1f);
+                        m_notificationAlpha.SetValue(NotificationManager.instance, 0f);
+                    }
+                    else
+                    {
+                        camera.rect = new Rect(0f, 0.105f, 1f, 0.895f);
+                    }
+                }
+            }
+        }
+
+        public static void EnsureUIComponentsLayout()
+        {
+            UIComponent[] componentsInChildren = UIView.GetAView().GetComponentsInChildren<UIComponent>();
+
+            for (int i = 0; i < componentsInChildren.Length; i++)
+            {
+                if (componentsInChildren[i] != null)
+                {
+                    // This ensure component layout is created
+                    // To avoid exception when OnResolutionChanged is called
+                    UIAnchorStyle anchor = componentsInChildren[i].anchor;
                 }
             }
         }

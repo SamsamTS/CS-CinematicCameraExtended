@@ -1,12 +1,8 @@
-using System;
+using System.Diagnostics;
 using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
 
-using ColossalFramework;
-using ColossalFramework.UI;
 
 namespace CinematicCameraExtended
 {
@@ -16,12 +12,22 @@ namespace CinematicCameraExtended
 
         public bool playBack;
         public float time;
-        
+
+        public bool stopping;
+
         public static float scrubTime;
         public static Knot currentTransfrom;
 
         private object m_simulationFrameLock;
         private MethodInfo simulationStep;
+
+        private bool simPaused;
+
+        private float frequency = Stopwatch.Frequency / 1000f;
+        private float waitTimeTarget;
+
+        private long stepcount;
+        private long startTime;
 
         private void Start()
         {
@@ -43,7 +49,7 @@ namespace CinematicCameraExtended
                 return 0f;
             }
             float num = 0f;
-            for (int i = 0; i < knots.m_size ; i++ )
+            for (int i = 0; i < knots.m_size; i++)
             {
                 Knot knot = (Knot)knots.m_buffer[i];
                 num += knot.delay + knot.duration;
@@ -55,18 +61,6 @@ namespace CinematicCameraExtended
         {
             if (!playBack && knots.m_size > 1)
             {
-                /*while (!Monitor.TryEnter(m_simulationFrameLock, SimulationManager.SYNCHRONIZE_TIMEOUT))
-                {
-                }
-                try
-                {
-                    SimulationManager.instance.m_simulationThread.Suspend();
-                }
-                finally
-                {
-                    Monitor.Exit(m_simulationFrameLock);
-                }*/
-
                 currentTransfrom = new Knot();
 
                 CameraDirector.mainWindow.isVisible = false;
@@ -74,13 +68,61 @@ namespace CinematicCameraExtended
 
                 if (CameraDirector.freeCamera)
                 {
-                    ((Knot)knots.m_buffer[0]).delay += 0.5f;
                     Cursor.visible = false;
                 }
 
                 time = 0f;
                 playBack = true;
                 CameraDirector.camera.GetComponent<CameraController>().enabled = false;
+
+                if (CameraDirector.startSimulation)
+                {
+                    simPaused = SimulationManager.instance.SimulationPaused;
+                    SimulationManager.instance.SimulationPaused = false;
+                }
+
+                if (CameraDirector.useFps)
+                {
+                    while (!Monitor.TryEnter(m_simulationFrameLock, SimulationManager.SYNCHRONIZE_TIMEOUT))
+                    {
+                    }
+                    try
+                    {
+                        SimulationManager.instance.m_simulationThread.Suspend();
+                    }
+                    finally
+                    {
+                        Monitor.Exit(m_simulationFrameLock);
+                    }
+
+                    waitTimeTarget = 1000 / CameraDirector.fps;
+                    stepcount = 0;
+                }
+            }
+        }
+
+        public void Stop()
+        {
+            CameraDirector.mainWindow.isVisible = true;
+            CameraDirector.SetFreeCamera(false);
+
+            if (CameraDirector.freeCamera)
+            {
+                Cursor.visible = true;
+            }
+
+            playBack = false;
+            CameraDirector.cameraController.enabled = true;
+            CameraDirector.camera.fieldOfView = CameraDirector.mainWindow.fovSlider.value / 2f;
+
+            if (CameraDirector.startSimulation)
+            {
+                SimulationManager.instance.SimulationPaused = simPaused;
+            }
+
+            if (CameraDirector.useFps)
+            {
+                SimulationManager.instance.m_simulationThread.Resume();
             }
         }
 
@@ -102,14 +144,40 @@ namespace CinematicCameraExtended
         {
             if (playBack)
             {
-                if (!CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time))
+                if (CameraDirector.useFps)
                 {
-                    Stop();
+                    if (stepcount == 0)
+                    {
+                        startTime = Stopwatch.GetTimestamp();
+                    }
+
+                    if (!CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time))
+                    {
+                        Stop();
+                        return;
+                    }
+                    else
+                    {
+                        simulationStep.Invoke(SimulationManager.instance, null);
+                        CameraDirector.camera.nearClipPlane = 1;
+                    }
+
+                    long expectedStart = startTime + (int)(waitTimeTarget * frequency * stepcount++);
+                    int wait = (int)(waitTimeTarget - ((Stopwatch.GetTimestamp() - expectedStart) / frequency)) - 1;
+
+                    if (wait > 0)
+                    {
+                        Thread.Sleep(wait);
+                    }
+                    while (playBack && (Stopwatch.GetTimestamp() - expectedStart) / frequency < waitTimeTarget) ;
                 }
-                /*else
+                else
                 {
-                    simulationStep.Invoke(SimulationManager.instance, null);
-                }*/
+                    if (!CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time))
+                    {
+                        Stop();
+                    }
+                }
             }
         }
 
@@ -119,23 +187,6 @@ namespace CinematicCameraExtended
             {
                 CameraDirector.camera.nearClipPlane = 1;
             }
-        }
-
-        public void Stop()
-        {
-            CameraDirector.mainWindow.isVisible = true;
-            CameraDirector.SetFreeCamera(false);
-
-            if (CameraDirector.freeCamera)
-            {
-                ((Knot)knots.m_buffer[0]).delay -= 0.5f;
-                Cursor.visible = true;
-            }
-
-            playBack = false;
-            CameraDirector.cameraController.enabled = true;
-            CameraDirector.camera.fieldOfView = CameraDirector.mainWindow.fovSlider.value / 2f;
-            /*SimulationManager.instance.m_simulationThread.Resume();*/
         }
 
         public static System.Collections.IEnumerator MoveCameraAsync(float time, Camera camera, FastList<object> knots)
@@ -246,8 +297,16 @@ namespace CinematicCameraExtended
         {
             CameraDirector.cameraController.m_currentPosition = knot.controllerPosition;
             CameraDirector.cameraController.m_targetPosition = knot.controllerPosition;
+
             CameraDirector.cameraController.m_currentAngle = knot.controllerAngle;
             CameraDirector.cameraController.m_targetAngle = knot.controllerAngle;
+
+            CameraDirector.cameraController.m_currentHeight = knot.controllerHeight;
+            CameraDirector.cameraController.m_targetHeight = knot.controllerHeight;
+
+            CameraDirector.cameraController.m_currentSize = knot.controllerSize;
+            CameraDirector.cameraController.m_targetSize = knot.controllerSize;
+
             CameraDirector.camera.fieldOfView = knot.fov;
             CameraDirector.mainWindow.fovSlider.value = knot.fov * 2f;
         }

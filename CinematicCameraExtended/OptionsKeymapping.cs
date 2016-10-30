@@ -17,7 +17,7 @@ namespace CinematicCameraExtended
 
         public static readonly SavedInputKey toggleUI = new SavedInputKey("toggleUI", CinematicCameraExtended.settingsFileName, SavedInputKey.Encode(KeyCode.C, false, false, false), true);
         public static readonly SavedInputKey addPoint = new SavedInputKey("toggleUI", CinematicCameraExtended.settingsFileName, SavedInputKey.Encode(KeyCode.KeypadPlus, false, false, false), true);
-       
+
         private int count = 0;
 
         private void Awake()

@@ -11,7 +11,7 @@ namespace CinematicCameraExtended
         {
             get
             {
-                return "CinematicCameraExtended";
+                return "Cinematic Camera Extended " + version; ;
             }
         }
 
@@ -41,6 +41,6 @@ namespace CinematicCameraExtended
             }
         }
 
-        public const string version = "0.1.2";
+        public const string version = "0.2.0";
     }
 }

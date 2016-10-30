@@ -1,21 +1,16 @@
-﻿using System;
-using System.Collections;
-using System.Reflection;
-
-using UnityEngine;
+﻿using UnityEngine;
 
 using ColossalFramework;
 using ColossalFramework.UI;
 
-using SamsamTS;
 using UIUtils = SamsamTS.UIUtils;
 
 namespace CinematicCameraExtended
 {
     public class UIMainWindow : UIPanel
     {
-        public static readonly SavedInt savedWindowX = new SavedInt("windowX", CinematicCameraExtended.settingsFileName, -1000, true);
-        public static readonly SavedInt savedWindowY = new SavedInt("windowY", CinematicCameraExtended.settingsFileName, -1000, true);
+        public static readonly SavedInt savedWindowX = new SavedInt("windowX", CinematicCameraExtended.settingsFileName, Screen.width / 2, true);
+        public static readonly SavedInt savedWindowY = new SavedInt("windowY", CinematicCameraExtended.settingsFileName, Screen.height / 2, true);
 
         public UIButton addKnotButton;
         public UIButton playButton;
@@ -28,6 +23,7 @@ namespace CinematicCameraExtended
         public UITextField fpsInput;
 
         public UICheckBox hideUICheckBox;
+        public UICheckBox startSimCheckBox;
         public UIFastList fastList;
 
         public override void Awake()
@@ -38,12 +34,11 @@ namespace CinematicCameraExtended
             atlas = UIUtils.GetAtlas("Ingame");
             backgroundSprite = "SubcategoriesPanel";
             size = new Vector2(465, 180);
-            absolutePosition = new Vector3(savedWindowX.value, savedWindowY.value);
 
             UIDragHandle dragHandle = AddUIComponent<UIDragHandle>();
             dragHandle.size = size;
-            dragHandle.relativePosition = Vector3.zero;
             dragHandle.target = parent;
+            dragHandle.relativePosition = Vector3.zero;
 
             // Control panel
             UILabel label = AddUIComponent<UILabel>();
@@ -91,7 +86,7 @@ namespace CinematicCameraExtended
             timelineSlider.thumbObject = thumb;
 
             timelineSlider.minValue = 0f;
-            timelineSlider.maxValue = 10f;
+            timelineSlider.maxValue = 1f;
             timelineSlider.stepSize = 0;
             timelineSlider.value = 0;
 
@@ -153,18 +148,20 @@ namespace CinematicCameraExtended
             fpsInput = UIUtils.CreateTextField(fpsPanel);
             fpsInput.name = "CCX_FpsInput";
             fpsInput.size = new Vector2(45f, 26);
+            fpsInput.text = CameraDirector.fps.ToString();
             fpsInput.numericalOnly = true;
             fpsInput.allowFloats = true;
             fpsInput.padding.top = 6;
             fpsInput.relativePosition = new Vector3(fpsPanel.width - fpsInput.width - 8, 10);
             fpsInput.tooltip = "Fps";
+            fpsInput.tooltip = "Sync the camera and the simulation at a set frame rate";
 
             fpsCheckBox = UIUtils.CreateCheckBox(fpsPanel);
             fpsCheckBox.text = "Fps:";
             fpsCheckBox.isChecked = false;
             fpsCheckBox.width = fpsPanel.width - fpsInput.width - 24;
             fpsCheckBox.relativePosition = new Vector2(8, 16);
-            fpsCheckBox.isEnabled = false;
+            fpsCheckBox.tooltip = "Sync the camera and the simulation at a set frame rate";
 
             // Hide UI checkbox
             hideUICheckBox = UIUtils.CreateCheckBox(this);
@@ -173,13 +170,20 @@ namespace CinematicCameraExtended
             hideUICheckBox.width = width - 16;
             hideUICheckBox.relativePosition = new Vector2(8, fovPanel.relativePosition.y + fovPanel.height + 8);
 
+            // Start simulation checkbox
+            startSimCheckBox = UIUtils.CreateCheckBox(this);
+            startSimCheckBox.text = "Unpause simulation";
+            startSimCheckBox.isChecked = false;
+            startSimCheckBox.width = (width - 16) / 2;
+            startSimCheckBox.relativePosition = new Vector2(8, hideUICheckBox.relativePosition.y + hideUICheckBox.height + 8);
+
             // FastList
             fastList = UIFastList.Create<UIKnotsListRow>(this);
             fastList.backgroundSprite = "UnlockingPanel";
             fastList.width = width - 16;
-            fastList.height = 46*5;
+            fastList.height = 46 * 5;
             fastList.canSelect = true;
-            fastList.relativePosition = new Vector3(8, hideUICheckBox.relativePosition.y + hideUICheckBox.height + 8);
+            fastList.relativePosition = new Vector3(8, startSimCheckBox.relativePosition.y + startSimCheckBox.height + 8);
 
             fastList.rowHeight = 46f;
             fastList.DisplayAt(0);
@@ -193,7 +197,7 @@ namespace CinematicCameraExtended
 
                 timelineSlider.minValue = 0f;
                 float duration = CameraDirector.cameraPath.CalculateTotalDuraction();
-                if (duration < 0f)
+                if (duration <= 0f)
                 {
                     duration = 1f;
                 }
@@ -220,6 +224,11 @@ namespace CinematicCameraExtended
                 CameraDirector.freeCamera = p;
             };
 
+            startSimCheckBox.eventCheckChanged += (c, p) =>
+            {
+                CameraDirector.startSimulation = p;
+            };
+
             fovSlider.eventValueChanged += (c, p) =>
             {
                 CameraDirector.camera.fieldOfView = p / 2f;
@@ -233,7 +242,7 @@ namespace CinematicCameraExtended
                 {
                     CameraDirector.camera.fieldOfView = Mathf.Clamp(value, 20f, 179f) / 2f;
 
-                    if(fovSlider.value != value)
+                    if (fovSlider.value != value)
                     {
                         fovSlider.value = value;
                     }
@@ -244,18 +253,48 @@ namespace CinematicCameraExtended
 
             fovInput.eventMouseWheel += (c, p) =>
             {
-                fovSlider.value += p.wheelDelta;
+                if (!p.used)
+                {
+                    fovSlider.value += p.wheelDelta;
+                    p.Use();
+                }
+            };
+
+            fpsCheckBox.eventCheckChanged += (c, p) =>
+            {
+                CameraDirector.useFps = p;
+            };
+
+            fpsInput.eventTextSubmitted += (c, p) =>
+            {
+                float value;
+                if (float.TryParse(p, out value))
+                {
+                    CameraDirector.fps = Mathf.Max(0, value);
+                }
+
+                fpsInput.text = CameraDirector.fps.ToString();
+            };
+
+            fpsInput.eventMouseWheel += (c, p) =>
+            {
+                if (!p.used)
+                {
+                    CameraDirector.fps = Mathf.Max(0, CameraDirector.fps + p.wheelDelta);
+                    fpsInput.text = CameraDirector.fps.ToString();
+                    p.Use();
+                }
             };
         }
 
         public void RefreshKnotList()
         {
-            if(fastList != null)
+            if (fastList != null)
             {
                 fastList.DisplayAt(fastList.listPosition);
 
                 float duration = CameraDirector.cameraPath.CalculateTotalDuraction();
-                if (duration < 0f)
+                if (duration <= 0f)
                 {
                     duration = 1f;
                 }
