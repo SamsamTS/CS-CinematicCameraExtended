@@ -2,7 +2,9 @@ using ICities;
 using UnityEngine;
 
 using System;
+using System.IO;
 using ColossalFramework;
+using ColossalFramework.IO;
 
 namespace CinematicCameraExtended
 {
@@ -11,6 +13,14 @@ namespace CinematicCameraExtended
         public GameObject cameraDirector;
 
         public static readonly string settingsFileName = "CinematicCameraExtended";
+
+        public static string saveFolder
+        {
+            get
+            {
+                return Path.Combine(DataLocation.localApplicationData, settingsFileName);
+            }
+        }
 
         public CinematicCameraExtended()
         {

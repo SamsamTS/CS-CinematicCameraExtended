@@ -3,7 +3,7 @@ using ColossalFramework.UI;
 
 using System;
 
-namespace CinematicCameraExtended
+namespace CinematicCameraExtended.GUI
 {
     public interface IUIFastListRow
     {

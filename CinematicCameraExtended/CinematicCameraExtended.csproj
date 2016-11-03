@@ -58,14 +58,21 @@
     <Compile Include="CinematicCameraInfo.cs" />
     <Compile Include="CinematicCameraExtended.cs" />
     <Compile Include="DebugUtils.cs" />
+    <Compile Include="GUI\UIMainButton.cs" />
     <Compile Include="Knot.cs" />
     <Compile Include="OptionsKeymapping.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ResourceLoader.cs" />
     <Compile Include="Spline.cs" />
-    <Compile Include="UIFastList.cs" />
-    <Compile Include="UIKnotsListRow.cs" />
-    <Compile Include="UIMainWindow.cs" />
-    <Compile Include="UIUtils.cs" />
+    <Compile Include="GUI\UIFastList.cs" />
+    <Compile Include="GUI\UIKnotsListRow.cs" />
+    <Compile Include="GUI\UISaveLoadFileRow.cs" />
+    <Compile Include="GUI\UISaveLoadWindow.cs" />
+    <Compile Include="GUI\UIMainWindow.cs" />
+    <Compile Include="GUI\UIUtils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Icons\ClapBoard.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

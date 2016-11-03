@@ -28,6 +28,11 @@ namespace CinematicCameraExtended
 
         public Knot()
         {
+            CaptureCamera();
+        }
+
+        public void CaptureCamera()
+        {
             controllerPosition = CameraDirector.cameraController.m_currentPosition;
             controllerAngle = CameraDirector.cameraController.m_currentAngle;
             controllerSize = CameraDirector.cameraController.m_currentSize;

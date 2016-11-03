@@ -2,12 +2,14 @@ using ColossalFramework.UI;
 using System;
 using System.Reflection;
 using UnityEngine;
+using CinematicCameraExtended.GUI;
 
 namespace CinematicCameraExtended
 {
     public class CameraDirector : MonoBehaviour
     {
         public static CameraPath cameraPath;
+        public static UIMainButton mainButton;
         public static UIMainWindow mainWindow;
 
         public static Camera camera;
@@ -38,7 +40,11 @@ namespace CinematicCameraExtended
 
             m_notificationAlpha = typeof(NotificationManager).GetField("m_notificationAlpha", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            mainWindow = UIView.GetAView().AddUIComponent(typeof(UIMainWindow)) as UIMainWindow;
+            UIView view = UIView.GetAView();
+
+            mainButton = view.AddUIComponent(typeof(UIMainButton)) as UIMainButton;
+
+            mainWindow = view.AddUIComponent(typeof(UIMainWindow)) as UIMainWindow;
             mainWindow.absolutePosition = new Vector3(UIMainWindow.savedWindowX.value, UIMainWindow.savedWindowY.value);
             mainWindow.fastList.rowsData = cameraPath.knots;
 
@@ -54,62 +60,62 @@ namespace CinematicCameraExtended
         {
             try
             {
-                if (!UIView.HasModalInput() && !UIView.HasInputFocus())
+                if (!UIView.HasModalInput() && !UIView.HasInputFocus() && OptionsKeymapping.addPoint.IsKeyUp())
                 {
-                    if (OptionsKeymapping.toggleUI.IsKeyUp())
+                    if (mainWindow != null && mainWindow.isVisibleSelf)
                     {
-                        if (cameraPath.playBack)
-                        {
-                            cameraPath.Stop();
-                        }
-                        else
-                        {
-                            CameraTool cameraTool = ToolsModifierControl.GetCurrentTool<CameraTool>();
-                            if (cameraTool != null)
-                            {
-                                UIView.GetAView().FindUIComponent<UIButton>("Freecamera").SimulateClick();
-                                mainWindow.isVisible = true;
-                            }
-                            else
-                            {
-                                mainWindow.isVisible = !mainWindow.isVisible;
-                            }
-
-                            if (mainWindow.isVisible)
-                            {
-                                camera.fieldOfView = mainWindow.fovSlider.value / 2f;
-                                cameraController.m_unlimitedCamera = true;
-
-                                if (EZC_fovSmoothing != null)
-                                {
-                                    EZC_originalFovSmoothing = (bool)EZC_fovSmoothing.GetValue(EZC_config);
-                                    EZC_fovSmoothing.SetValue(EZC_config, false);
-                                }
-                            }
-                            else
-                            {
-                                camera.fieldOfView = originalFov;
-                                cameraController.m_unlimitedCamera = unlimitedCamera;
-
-                                if (EZC_fovSmoothing != null)
-                                {
-                                    EZC_fovSmoothing.SetValue(EZC_config, EZC_originalFovSmoothing);
-                                }
-                            }
-                        }
-                    }
-                    else if (OptionsKeymapping.addPoint.IsKeyUp())
-                    {
-                        if (mainWindow != null && mainWindow.isVisible)
-                        {
-                            mainWindow.addKnotButton.SimulateClick();
-                        }
+                        mainWindow.addKnotButton.SimulateClick();
                     }
                 }
             }
             catch (Exception e)
             {
                 DebugUtils.LogException(e);
+            }
+        }
+
+        public static void ToggleUI()
+        {
+            if (cameraPath.playBack)
+            {
+                cameraPath.Stop();
+            }
+            else
+            {
+                CameraTool cameraTool = ToolsModifierControl.GetCurrentTool<CameraTool>();
+                if (cameraTool != null)
+                {
+                    UIView.GetAView().FindUIComponent<UIButton>("Freecamera").SimulateClick();
+                    mainWindow.isVisible = true;
+                }
+                else
+                {
+                    mainWindow.isVisible = !mainWindow.isVisible;
+                }
+
+                if (mainWindow.isVisible)
+                {
+                    camera.fieldOfView = mainWindow.fovSlider.value / 2f;
+                    cameraController.m_unlimitedCamera = true;
+                    cameraController.m_minDistance = 5;
+
+                    if (EZC_fovSmoothing != null)
+                    {
+                        EZC_originalFovSmoothing = (bool)EZC_fovSmoothing.GetValue(EZC_config);
+                        EZC_fovSmoothing.SetValue(EZC_config, false);
+                    }
+                }
+                else
+                {
+                    camera.fieldOfView = originalFov;
+                    cameraController.m_unlimitedCamera = unlimitedCamera;
+                    cameraController.m_minDistance = 40;
+
+                    if (EZC_fovSmoothing != null)
+                    {
+                        EZC_fovSmoothing.SetValue(EZC_config, EZC_originalFovSmoothing);
+                    }
+                }
             }
         }
 

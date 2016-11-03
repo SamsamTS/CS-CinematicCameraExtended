@@ -21,6 +21,8 @@ namespace SamsamTS
             button.normalBgSprite = "ButtonMenu";
             button.hoveredBgSprite = "ButtonMenuHovered";
             button.pressedBgSprite = "ButtonMenuPressed";
+            button.disabledBgSprite = "ButtonMenuDisabled";
+            button.disabledTextColor = new Color32(80, 80, 80, 128);
             button.canFocus = false;
             button.playAudioEvents = true;
 

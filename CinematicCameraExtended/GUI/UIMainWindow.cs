@@ -5,7 +5,7 @@ using ColossalFramework.UI;
 
 using UIUtils = SamsamTS.UIUtils;
 
-namespace CinematicCameraExtended
+namespace CinematicCameraExtended.GUI
 {
     public class UIMainWindow : UIPanel
     {
@@ -26,6 +26,8 @@ namespace CinematicCameraExtended
         public UICheckBox startSimCheckBox;
         public UIFastList fastList;
 
+        public UIButton saveLoadButton;
+
         public override void Awake()
         {
             isVisible = false;
@@ -34,9 +36,9 @@ namespace CinematicCameraExtended
             atlas = UIUtils.GetAtlas("Ingame");
             backgroundSprite = "SubcategoriesPanel";
             size = new Vector2(465, 180);
+            absolutePosition = new Vector3(savedWindowX.value, savedWindowY.value);
 
             UIDragHandle dragHandle = AddUIComponent<UIDragHandle>();
-            dragHandle.size = size;
             dragHandle.target = parent;
             dragHandle.relativePosition = Vector3.zero;
 
@@ -60,6 +62,7 @@ namespace CinematicCameraExtended
             addKnotButton.text = "+";
             addKnotButton.size = new Vector2(40f, 30f);
             addKnotButton.relativePosition = new Vector3(8, 8);
+            addKnotButton.tooltip = "Add a new point to the path";
 
             playButton = UIUtils.CreateButton(controlPanel);
             playButton.name = "CCX_Play";
@@ -68,6 +71,7 @@ namespace CinematicCameraExtended
             playButton.size = new Vector2(40f, 30f);
             playButton.playAudioEvents = false;
             playButton.relativePosition = new Vector3(controlPanel.width - playButton.width - 8, 8);
+            playButton.tooltip = "Play the current path";
 
             timelineSlider = controlPanel.AddUIComponent<UISlider>();
             timelineSlider.name = "CCX_TimelineSlider";
@@ -79,6 +83,7 @@ namespace CinematicCameraExtended
             bgSlider.spriteName = "BudgetSlider";
             bgSlider.size = new Vector2(timelineSlider.width, 9);
             bgSlider.relativePosition = new Vector2(0, 4);
+            bgSlider.tooltip = "Drag the slider to preview the animation";
 
             UISlicedSprite thumb = timelineSlider.AddUIComponent<UISlicedSprite>();
             thumb.atlas = atlas;
@@ -126,6 +131,7 @@ namespace CinematicCameraExtended
             bgSlider.spriteName = "BudgetSlider";
             bgSlider.size = new Vector2(fovSlider.width, 9);
             bgSlider.relativePosition = new Vector2(0, 4);
+            bgSlider.tooltip = "Drag the slider to change the field of view";
 
             thumb = fovSlider.AddUIComponent<UISlicedSprite>();
             thumb.atlas = atlas;
@@ -165,6 +171,7 @@ namespace CinematicCameraExtended
 
             // Hide UI checkbox
             hideUICheckBox = UIUtils.CreateCheckBox(this);
+            hideUICheckBox.name = "CCX_HideUICheckBox";
             hideUICheckBox.text = "Hide UI during playback";
             hideUICheckBox.isChecked = true;
             hideUICheckBox.width = width - 16;
@@ -172,6 +179,7 @@ namespace CinematicCameraExtended
 
             // Start simulation checkbox
             startSimCheckBox = UIUtils.CreateCheckBox(this);
+            startSimCheckBox.name = "CCX_StartSimCheckBox";
             startSimCheckBox.text = "Unpause simulation";
             startSimCheckBox.isChecked = false;
             startSimCheckBox.width = (width - 16) / 2;
@@ -188,7 +196,17 @@ namespace CinematicCameraExtended
             fastList.rowHeight = 46f;
             fastList.DisplayAt(0);
 
-            height = fastList.relativePosition.y + fastList.height + 8;
+            // Load/Save
+            saveLoadButton = UIUtils.CreateButton(this);
+            saveLoadButton.name = "CCX_SaveLoadButton";
+            saveLoadButton.text = "Save/Load";
+            saveLoadButton.size = new Vector2(100f, 30f);
+            saveLoadButton.isEnabled = false;
+            saveLoadButton.relativePosition = new Vector3(width - saveLoadButton.width - 8, fastList.relativePosition.y + fastList.height + 8);
+            saveLoadButton.tooltip = "Work in progress";
+
+            height = saveLoadButton.relativePosition.y + saveLoadButton.height + 8;
+            dragHandle.size = size;
 
             addKnotButton.eventClicked += (c, p) =>
             {
@@ -285,6 +303,22 @@ namespace CinematicCameraExtended
                     p.Use();
                 }
             };
+        }
+
+        protected override void OnPositionChanged()
+        {
+            if (absolutePosition.x == -1000)
+            {
+                absolutePosition = new Vector2((Screen.width - width) / 2, (Screen.height - height) / 2);
+            }
+            absolutePosition = new Vector2(
+                Mathf.Clamp(absolutePosition.x, 0, Screen.width - width),
+                Mathf.Clamp(absolutePosition.y, 0, Screen.height - height));
+
+            savedWindowX.value = (int)absolutePosition.x;
+            savedWindowY.value = (int)absolutePosition.y;
+
+            base.OnPositionChanged();
         }
 
         public void RefreshKnotList()

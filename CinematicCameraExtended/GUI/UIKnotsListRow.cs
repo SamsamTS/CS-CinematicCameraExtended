@@ -3,7 +3,7 @@ using ColossalFramework.UI;
 
 using UIUtils = SamsamTS.UIUtils;
 
-namespace CinematicCameraExtended
+namespace CinematicCameraExtended.GUI
 {
     public class UIKnotsListRow : UIPanel, IUIFastListRow
     {
@@ -163,9 +163,7 @@ namespace CinematicCameraExtended
 
             resetButton.eventClicked += (c, p) =>
             {
-                knot.rotation = CameraDirector.camera.transform.rotation;
-                knot.position = CameraDirector.camera.transform.position;
-                knot.fov = CameraDirector.camera.fieldOfView;
+                knot.CaptureCamera();
                 fovInput.text = (2f * knot.fov).ToString();
             };
 
