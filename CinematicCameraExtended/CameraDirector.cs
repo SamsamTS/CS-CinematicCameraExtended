@@ -43,10 +43,7 @@ namespace CinematicCameraExtended
             UIView view = UIView.GetAView();
 
             mainButton = view.AddUIComponent(typeof(UIMainButton)) as UIMainButton;
-
             mainWindow = view.AddUIComponent(typeof(UIMainWindow)) as UIMainWindow;
-            mainWindow.absolutePosition = new Vector3(UIMainWindow.savedWindowX.value, UIMainWindow.savedWindowY.value);
-            mainWindow.fastList.rowsData = cameraPath.knots;
 
             try
             {
@@ -60,11 +57,24 @@ namespace CinematicCameraExtended
         {
             try
             {
-                if (!UIView.HasModalInput() && !UIView.HasInputFocus() && OptionsKeymapping.addPoint.IsKeyUp())
+                if (!UIView.HasModalInput() && !UIView.HasInputFocus())
                 {
+
                     if (mainWindow != null && mainWindow.isVisibleSelf)
                     {
-                        mainWindow.addKnotButton.SimulateClick();
+                        if (OptionsKeymapping.addPoint.IsKeyUp())
+                        {
+                            mainWindow.addKnotButton.SimulateClick();
+                        }
+                        else if(OptionsKeymapping.removePoint.IsKeyUp())
+                        {
+                            cameraPath.RemoveKnot();
+                            mainWindow.RefreshKnotList();
+                        }
+                        else if (OptionsKeymapping.play.IsKeyUp())
+                        {
+                            mainWindow.playButton.SimulateClick();
+                        }
                     }
                 }
             }
@@ -78,6 +88,7 @@ namespace CinematicCameraExtended
         {
             if (cameraPath.playBack)
             {
+                DebugUtils.Log("Stopping playback");
                 cameraPath.Stop();
             }
             else
@@ -85,6 +96,7 @@ namespace CinematicCameraExtended
                 CameraTool cameraTool = ToolsModifierControl.GetCurrentTool<CameraTool>();
                 if (cameraTool != null)
                 {
+                    DebugUtils.Log("Exiting Free Camera Mode");
                     UIView.GetAView().FindUIComponent<UIButton>("Freecamera").SimulateClick();
                     mainWindow.isVisible = true;
                 }
@@ -95,6 +107,7 @@ namespace CinematicCameraExtended
 
                 if (mainWindow.isVisible)
                 {
+                    DebugUtils.Log("Showing main window");
                     camera.fieldOfView = mainWindow.fovSlider.value / 2f;
                     cameraController.m_unlimitedCamera = true;
                     cameraController.m_minDistance = 5;
@@ -107,6 +120,7 @@ namespace CinematicCameraExtended
                 }
                 else
                 {
+                    DebugUtils.Log("Hiding main window");
                     camera.fieldOfView = originalFov;
                     cameraController.m_unlimitedCamera = unlimitedCamera;
                     cameraController.m_minDistance = 40;

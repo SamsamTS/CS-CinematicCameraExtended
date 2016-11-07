@@ -1,6 +1,7 @@
 using ICities;
-using System;
 
+using System;
+using ColossalFramework;
 using ColossalFramework.UI;
 
 namespace CinematicCameraExtended
@@ -23,6 +24,20 @@ namespace CinematicCameraExtended
             }
         }
 
+        public CinematicCameraInfo()
+        {
+            try
+            {
+                // Creating setting file
+                GameSettings.AddSettingsFile(new SettingsFile[] { new SettingsFile() { fileName = CinematicCameraExtended.settingsFileName } });
+            }
+            catch (Exception e)
+            {
+                DebugUtils.Log("Could load/create the setting file.");
+                DebugUtils.LogException(e);
+            }
+        }
+
         public void OnSettingsUI(UIHelperBase helper)
         {
             try
@@ -41,6 +56,6 @@ namespace CinematicCameraExtended
             }
         }
 
-        public const string version = "0.3.0";
+        public const string version = "0.3.4";
     }
 }

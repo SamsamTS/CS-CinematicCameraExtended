@@ -16,7 +16,9 @@ namespace CinematicCameraExtended
         private string m_EditingBindingCategory;
 
         public static readonly SavedInputKey toggleUI = new SavedInputKey("toggleUI", CinematicCameraExtended.settingsFileName, SavedInputKey.Encode(KeyCode.C, false, false, false), true);
-        public static readonly SavedInputKey addPoint = new SavedInputKey("toggleUI", CinematicCameraExtended.settingsFileName, SavedInputKey.Encode(KeyCode.KeypadPlus, false, false, false), true);
+        public static readonly SavedInputKey addPoint = new SavedInputKey("addPoint", CinematicCameraExtended.settingsFileName, SavedInputKey.Encode(KeyCode.KeypadPlus, false, false, false), true);
+        public static readonly SavedInputKey removePoint = new SavedInputKey("removePoint", CinematicCameraExtended.settingsFileName, SavedInputKey.Encode(KeyCode.KeypadMinus, false, false, false), true);
+        public static readonly SavedInputKey play = new SavedInputKey("play", CinematicCameraExtended.settingsFileName, SavedInputKey.Encode(KeyCode.KeypadEnter, false, false, false), true);
 
         private int count = 0;
 
@@ -24,6 +26,8 @@ namespace CinematicCameraExtended
         {
             AddKeymapping("Toggle UI", toggleUI);
             AddKeymapping("Add point", addPoint);
+            AddKeymapping("Remove point", removePoint);
+            AddKeymapping("Play", play);
         }
 
         private void AddKeymapping(string label, SavedInputKey savedInputKey)

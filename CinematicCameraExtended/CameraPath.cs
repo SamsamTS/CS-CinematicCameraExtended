@@ -42,6 +42,14 @@ namespace CinematicCameraExtended
             return knots.m_size - 1;
         }
 
+        public void RemoveKnot()
+        {
+            if(knots.m_size > 0)
+            {
+                knots.m_size--;
+            }
+        }
+
         public float CalculateTotalDuraction()
         {
             if (knots.m_size == 0)

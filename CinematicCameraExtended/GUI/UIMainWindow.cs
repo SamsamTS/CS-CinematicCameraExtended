@@ -9,8 +9,8 @@ namespace CinematicCameraExtended.GUI
 {
     public class UIMainWindow : UIPanel
     {
-        public static readonly SavedInt savedWindowX = new SavedInt("windowX", CinematicCameraExtended.settingsFileName, Screen.width / 2, true);
-        public static readonly SavedInt savedWindowY = new SavedInt("windowY", CinematicCameraExtended.settingsFileName, Screen.height / 2, true);
+        public static readonly SavedInt savedWindowX = new SavedInt("windowX", CinematicCameraExtended.settingsFileName, -1000, true);
+        public static readonly SavedInt savedWindowY = new SavedInt("windowY", CinematicCameraExtended.settingsFileName, -1000, true);
 
         public UIButton addKnotButton;
         public UIButton playButton;
@@ -28,15 +28,13 @@ namespace CinematicCameraExtended.GUI
 
         public UIButton saveLoadButton;
 
-        public override void Awake()
+        public override void Start()
         {
-            isVisible = false;
-
             name = "CCX_MainWindow";
             atlas = UIUtils.GetAtlas("Ingame");
             backgroundSprite = "SubcategoriesPanel";
             size = new Vector2(465, 180);
-            absolutePosition = new Vector3(savedWindowX.value, savedWindowY.value);
+            isVisible = false;
 
             UIDragHandle dragHandle = AddUIComponent<UIDragHandle>();
             dragHandle.target = parent;
@@ -194,7 +192,7 @@ namespace CinematicCameraExtended.GUI
             fastList.relativePosition = new Vector3(8, startSimCheckBox.relativePosition.y + startSimCheckBox.height + 8);
 
             fastList.rowHeight = 46f;
-            fastList.DisplayAt(0);
+            fastList.rowsData = CameraDirector.cameraPath.knots;
 
             // Load/Save
             saveLoadButton = UIUtils.CreateButton(this);
@@ -207,6 +205,7 @@ namespace CinematicCameraExtended.GUI
 
             height = saveLoadButton.relativePosition.y + saveLoadButton.height + 8;
             dragHandle.size = size;
+            absolutePosition = new Vector3(savedWindowX.value, savedWindowY.value);
 
             addKnotButton.eventClicked += (c, p) =>
             {
@@ -303,22 +302,38 @@ namespace CinematicCameraExtended.GUI
                     p.Use();
                 }
             };
+
+            DebugUtils.Log("UIMainWindow created");
         }
 
         protected override void OnPositionChanged()
         {
+            UIView view = GetUIView();
+
             if (absolutePosition.x == -1000)
             {
-                absolutePosition = new Vector2((Screen.width - width) / 2, (Screen.height - height) / 2);
+                absolutePosition = new Vector2((view.fixedWidth - width) / 2, (view.fixedHeight - height) / 2);
             }
+
             absolutePosition = new Vector2(
-                Mathf.Clamp(absolutePosition.x, 0, Screen.width - width),
-                Mathf.Clamp(absolutePosition.y, 0, Screen.height - height));
+                (int)Mathf.Clamp(absolutePosition.x, 0, view.fixedWidth - width),
+                (int)Mathf.Clamp(absolutePosition.y, 0, view.fixedHeight - height));
 
             savedWindowX.value = (int)absolutePosition.x;
             savedWindowY.value = (int)absolutePosition.y;
 
             base.OnPositionChanged();
+        }
+
+        protected override void OnVisibilityChanged()
+        {
+            if (isVisible)
+            {
+                absolutePosition = new Vector3(savedWindowX.value, savedWindowY.value);
+                DebugUtils.Log("Main window position: " + absolutePosition);
+            }
+
+            base.OnVisibilityChanged();
         }
 
         public void RefreshKnotList()

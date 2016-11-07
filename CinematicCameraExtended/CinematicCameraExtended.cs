@@ -1,9 +1,7 @@
 using ICities;
 using UnityEngine;
 
-using System;
 using System.IO;
-using ColossalFramework;
 using ColossalFramework.IO;
 
 namespace CinematicCameraExtended
@@ -19,20 +17,6 @@ namespace CinematicCameraExtended
             get
             {
                 return Path.Combine(DataLocation.localApplicationData, settingsFileName);
-            }
-        }
-
-        public CinematicCameraExtended()
-        {
-            try
-            {
-                // Creating setting file
-                GameSettings.AddSettingsFile(new SettingsFile[] { new SettingsFile() { fileName = settingsFileName } });
-            }
-            catch (Exception e)
-            {
-                DebugUtils.Log("Could load/create the setting file.");
-                DebugUtils.LogException(e);
             }
         }
 
