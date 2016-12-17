@@ -35,10 +35,11 @@ namespace CinematicCameraExtended.GUI
             easingDropDown.name = "CCX_EasingDropDown";
             easingDropDown.textScale = 0.9f;
             easingDropDown.AddItem("None");
+            easingDropDown.AddItem("Auto");
             easingDropDown.AddItem("In");
             easingDropDown.AddItem("Out");
             easingDropDown.AddItem("InOut");
-            easingDropDown.selectedValue = "InOut";
+            easingDropDown.selectedValue = "Auto";
             easingDropDown.size = new Vector2(80f, 30f);
             easingDropDown.textFieldPadding.top = 7;
             easingDropDown.relativePosition = new Vector3(focusButton.relativePosition.x + focusButton.width + 8, 8);
@@ -155,7 +156,7 @@ namespace CinematicCameraExtended.GUI
                 float value;
                 if (float.TryParse(fovInput.text, out value))
                 {
-                    knot.fov = Mathf.Clamp(value, 20f, 179f) / 2f;
+                    knot.fov = Mathf.Clamp(value + p.wheelDelta, 20f, 179f) / 2f;
                     fovInput.text = (2f * knot.fov).ToString();
                 }
                 p.Use();

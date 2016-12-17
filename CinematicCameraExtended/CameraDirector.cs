@@ -40,10 +40,13 @@ namespace CinematicCameraExtended
 
             m_notificationAlpha = typeof(NotificationManager).GetField("m_notificationAlpha", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            UIView view = UIView.GetAView();
 
-            mainButton = view.AddUIComponent(typeof(UIMainButton)) as UIMainButton;
-            mainWindow = view.AddUIComponent(typeof(UIMainWindow)) as UIMainWindow;
+            if (mainButton == null)
+            {
+                UIView view = UIView.GetAView();
+                mainButton = view.AddUIComponent(typeof(UIMainButton)) as UIMainButton;
+                mainWindow = view.AddUIComponent(typeof(UIMainWindow)) as UIMainWindow;
+            }
 
             try
             {

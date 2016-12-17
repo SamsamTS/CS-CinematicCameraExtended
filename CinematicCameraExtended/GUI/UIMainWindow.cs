@@ -308,32 +308,21 @@ namespace CinematicCameraExtended.GUI
 
         protected override void OnPositionChanged()
         {
-            UIView view = GetUIView();
+            Vector2 resolution = GetUIView().GetScreenResolution();
 
             if (absolutePosition.x == -1000)
             {
-                absolutePosition = new Vector2((view.fixedWidth - width) / 2, (view.fixedHeight - height) / 2);
+                absolutePosition = new Vector2((resolution.x - width) / 2, (resolution.y - height) / 2);
             }
 
             absolutePosition = new Vector2(
-                (int)Mathf.Clamp(absolutePosition.x, 0, view.fixedWidth - width),
-                (int)Mathf.Clamp(absolutePosition.y, 0, view.fixedHeight - height));
+                (int)Mathf.Clamp(absolutePosition.x, 0, resolution.x - width),
+                (int)Mathf.Clamp(absolutePosition.y, 0, resolution.y - height));
 
             savedWindowX.value = (int)absolutePosition.x;
             savedWindowY.value = (int)absolutePosition.y;
 
             base.OnPositionChanged();
-        }
-
-        protected override void OnVisibilityChanged()
-        {
-            if (isVisible)
-            {
-                absolutePosition = new Vector3(savedWindowX.value, savedWindowY.value);
-                DebugUtils.Log("Main window position: " + absolutePosition);
-            }
-
-            base.OnVisibilityChanged();
         }
 
         public void RefreshKnotList()

@@ -241,23 +241,30 @@ namespace CinematicCameraExtended
                     num = 0;
                 }
             }
+
+            Knot currentKnot = (Knot)knots.m_buffer[num];
+            Knot nextKnot = (Knot)knots.m_buffer[num + 1];
+
             float t = time - num2;
-            if (t >= ((Knot)knots.m_buffer[num]).delay && flag && !flag2)
+            if (t >= currentKnot.delay && flag && !flag2)
             {
-                t -= ((Knot)knots.m_buffer[num]).delay;
-                switch (((Knot)knots.m_buffer[num]).mode)
+                t -= currentKnot.delay;
+                switch (currentKnot.mode)
                 {
                     case EasingMode.None:
-                        t /= ((Knot)knots.m_buffer[num]).duration;
+                        t /= currentKnot.duration;
                         break;
                     case EasingMode.EaseIn:
-                        t = CameraPath.EaseInQuad(t, 0f, 1f, ((Knot)knots.m_buffer[num]).duration);
+                        t = CameraPath.EaseInQuad(t, 0f, 1f, currentKnot.duration);
                         break;
                     case EasingMode.EaseOut:
-                        t = CameraPath.EaseOutQuad(t, 0f, 1f, ((Knot)knots.m_buffer[num]).duration);
+                        t = CameraPath.EaseOutQuad(t, 0f, 1f, currentKnot.duration);
                         break;
                     case EasingMode.EaseInOut:
-                        t = CameraPath.EaseInOutQuad(t, 0f, 1f, ((Knot)knots.m_buffer[num]).duration);
+                        t = CameraPath.EaseInOutQuad(t, 0f, 1f, currentKnot.duration);
+                        break;
+                    case EasingMode.Auto:
+                        t = Spline.CalculateSplineT(knots.m_buffer, knots.m_size, num, t / currentKnot.duration);
                         break;
                 }
             }
@@ -265,9 +272,15 @@ namespace CinematicCameraExtended
             {
                 t = (float)(flag2 ? 1 : 0);
             }
-            Vector3 position = Spline.CalculateSplinePosition(knots.m_buffer, knots.m_size, num, t);
-            Quaternion rotation = Quaternion.Slerp(((Knot)knots.m_buffer[num]).rotation, ((Knot)knots.m_buffer[num + 1]).rotation, t);
-            float fov = Mathf.Lerp(((Knot)knots.m_buffer[num]).fov, ((Knot)knots.m_buffer[num + 1]).fov, t);
+
+            float fov = Mathf.Lerp(currentKnot.fov, nextKnot.fov, t);
+
+            float distance1 = currentKnot.size * (1f - currentKnot.height / CameraDirector.cameraController.m_maxDistance) / Mathf.Tan(0.0174532924f * fov);
+            float distance2 = nextKnot.size * (1f - nextKnot.height / CameraDirector.cameraController.m_maxDistance) / Mathf.Tan(0.0174532924f * fov);
+            float distance = Mathf.Lerp(distance1, distance2, t);
+
+            Quaternion rotation = Spline.CalculateSplineRotationEuler(knots.m_buffer, knots.m_size, num, t);
+            Vector3 position = Spline.CalculateSplinePosition(knots.m_buffer, knots.m_size, num, t) + rotation * new Vector3(0f, 0f, -distance);
 
             camera.transform.position = position;
             camera.transform.rotation = rotation;
@@ -303,17 +316,18 @@ namespace CinematicCameraExtended
 
         public static void SetCitiesCameraTransform(Knot knot)
         {
-            CameraDirector.cameraController.m_currentPosition = knot.controllerPosition;
-            CameraDirector.cameraController.m_targetPosition = knot.controllerPosition;
+            CameraDirector.cameraController.m_currentPosition = knot.position;
+            CameraDirector.cameraController.m_targetPosition = knot.position;
 
-            CameraDirector.cameraController.m_currentAngle = knot.controllerAngle;
-            CameraDirector.cameraController.m_targetAngle = knot.controllerAngle;
+            Vector2 angle = new Vector2(knot.rotation.eulerAngles.y, knot.rotation.eulerAngles.x);
+            CameraDirector.cameraController.m_currentAngle = angle;
+            CameraDirector.cameraController.m_targetAngle = angle;
 
-            CameraDirector.cameraController.m_currentHeight = knot.controllerHeight;
-            CameraDirector.cameraController.m_targetHeight = knot.controllerHeight;
+            CameraDirector.cameraController.m_currentHeight = knot.height;
+            CameraDirector.cameraController.m_targetHeight = knot.height;
 
-            CameraDirector.cameraController.m_currentSize = knot.controllerSize;
-            CameraDirector.cameraController.m_targetSize = knot.controllerSize;
+            CameraDirector.cameraController.m_currentSize = knot.size;
+            CameraDirector.cameraController.m_targetSize = knot.size;
 
             CameraDirector.camera.fieldOfView = knot.fov;
             CameraDirector.mainWindow.fovSlider.value = knot.fov * 2f;
