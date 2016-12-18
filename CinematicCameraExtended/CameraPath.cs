@@ -2,7 +2,13 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using UnityEngine;
+using UnityStandardAssets.ImageEffects;
+using ColossalFramework;
 
+using System;
+using System.IO;
+using System.Xml.Serialization;
+using System.Collections.Generic;
 
 namespace CinematicCameraExtended
 {
@@ -29,11 +35,20 @@ namespace CinematicCameraExtended
         private long stepcount;
         private long startTime;
 
+        private static TiltShiftEffect m_tiltShift;
+        private static DepthOfField m_depthOfField;
+
+        private static SavedFloat tiltShiftAmount = new SavedFloat(Settings.tiltShiftAmount, Settings.gameSettingsFile, DefaultSettings.tiltShiftAmount, true);
+        private static SavedInt DOFMode = new SavedInt(Settings.dofMode, Settings.gameSettingsFile, DefaultSettings.dofMode, true);
+
         private void Start()
         {
             CameraPath.scrubTime = 0f;
             simulationStep = typeof(SimulationManager).GetMethod("SimulationStep", BindingFlags.NonPublic | BindingFlags.Instance);
             m_simulationFrameLock = typeof(SimulationManager).GetField("m_simulationFrameLock", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(SimulationManager.instance);
+
+            m_tiltShift = CameraDirector.cameraController.GetComponent<TiltShiftEffect>();
+            m_depthOfField = CameraDirector.cameraController.GetComponent<DepthOfField>();
         }
 
         public int AddKnot()
@@ -44,7 +59,7 @@ namespace CinematicCameraExtended
 
         public void RemoveKnot()
         {
-            if(knots.m_size > 0)
+            if (knots.m_size > 0)
             {
                 knots.m_size--;
             }
@@ -141,10 +156,10 @@ namespace CinematicCameraExtended
                 CameraPath.scrubTime = Time.time;
                 if (!CameraDirector.cameraController.enabled)
                 {
-                    CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time);
+                    CameraPath.MoveCamera(time, 1f, CameraDirector.camera, knots, out time);
                     return;
                 }
-                base.StartCoroutine(CameraPath.MoveCameraAsync(time, CameraDirector.camera, knots));
+                base.StartCoroutine(CameraPath.MoveCameraAsync(time, 1f, CameraDirector.camera, knots));
             }
         }
 
@@ -159,7 +174,7 @@ namespace CinematicCameraExtended
                         startTime = Stopwatch.GetTimestamp();
                     }
 
-                    if (!CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time))
+                    if (!CameraPath.MoveCamera(time, CameraDirector.mainWindow.playSpeed, CameraDirector.camera, knots, out time))
                     {
                         Stop();
                         return;
@@ -181,7 +196,7 @@ namespace CinematicCameraExtended
                 }
                 else
                 {
-                    if (!CameraPath.MoveCamera(time, CameraDirector.camera, knots, out time))
+                    if (!CameraPath.MoveCamera(time, CameraDirector.mainWindow.playSpeed, CameraDirector.camera, knots, out time))
                     {
                         Stop();
                     }
@@ -197,12 +212,12 @@ namespace CinematicCameraExtended
             }
         }
 
-        public static System.Collections.IEnumerator MoveCameraAsync(float time, Camera camera, FastList<object> knots)
+        public static System.Collections.IEnumerator MoveCameraAsync(float time, float speed, Camera camera, FastList<object> knots)
         {
             CameraDirector.cameraController.enabled = false;
             yield return new WaitForSeconds(0.01f);
             float num;
-            CameraPath.MoveCamera(time, camera, knots, out num);
+            CameraPath.MoveCamera(time, speed, camera, knots, out num);
             do
             {
                 yield return new WaitForSeconds(0.05f);
@@ -213,64 +228,66 @@ namespace CinematicCameraExtended
             yield break;
         }
 
-        public static bool MoveCamera(float time, Camera camera, FastList<object> knots, out float timeOut)
+        public static bool MoveCamera(float time, float speed, Camera camera, FastList<object> knots, out float timeOut)
         {
-            bool flag = true;
-            int num = 0;
-            float num2 = 0f;
+            bool result = true;
+            int index = 0;
+            float duration = 0f;
+
             for (int i = 0; i < knots.m_size; i++)
             {
                 Knot knot = (Knot)knots.m_buffer[i];
-                float num3 = knot.duration + knot.delay;
-                if (time < num2 + num3)
+                float knotDuration = (knot.duration + knot.delay) / speed;
+                if (time < duration + knotDuration)
                 {
-                    num = i;
+                    index = i;
                     break;
                 }
-                num2 += num3;
+                duration += knotDuration;
             }
-            bool flag2 = false;
-            if (num + 1 >= knots.m_size)
+
+            bool ended = false;
+            if (index + 1 >= knots.m_size)
             {
-                num = knots.m_size - 2;
-                flag2 = true;
-                if (time > num2 + ((Knot)knots.m_buffer[knots.m_size - 1]).delay)
+                index = knots.m_size - 2;
+                ended = true;
+                if (time > duration + ((Knot)knots.m_buffer[knots.m_size - 1]).delay)
                 {
-                    flag2 = false;
-                    flag = false;
-                    num = 0;
+                    ended = false;
+                    result = false;
+                    index = 0;
                 }
             }
 
-            Knot currentKnot = (Knot)knots.m_buffer[num];
-            Knot nextKnot = (Knot)knots.m_buffer[num + 1];
+            Knot currentKnot = (Knot)knots.m_buffer[index];
+            Knot nextKnot = (Knot)knots.m_buffer[index + 1];
 
-            float t = time - num2;
-            if (t >= currentKnot.delay && flag && !flag2)
+            float t = time - duration;
+            if (t >= currentKnot.delay && result && !ended)
             {
                 t -= currentKnot.delay;
                 switch (currentKnot.mode)
                 {
                     case EasingMode.None:
-                        t /= currentKnot.duration;
+                        t /= currentKnot.duration / speed;
                         break;
                     case EasingMode.EaseIn:
-                        t = CameraPath.EaseInQuad(t, 0f, 1f, currentKnot.duration);
+                        t = CameraPath.EaseInQuad(t, 0f, 1f, currentKnot.duration / speed);
                         break;
                     case EasingMode.EaseOut:
-                        t = CameraPath.EaseOutQuad(t, 0f, 1f, currentKnot.duration);
+                        t = CameraPath.EaseOutQuad(t, 0f, 1f, currentKnot.duration / speed);
                         break;
                     case EasingMode.EaseInOut:
-                        t = CameraPath.EaseInOutQuad(t, 0f, 1f, currentKnot.duration);
+                        t = CameraPath.EaseInOutQuad(t, 0f, 1f, currentKnot.duration / speed);
                         break;
                     case EasingMode.Auto:
-                        t = Spline.CalculateSplineT(knots.m_buffer, knots.m_size, num, t / currentKnot.duration);
+                        t = Spline.CalculateSplineT(knots.m_buffer, knots.m_size, index, t / (currentKnot.duration / speed));
                         break;
                 }
             }
             else
             {
-                t = (float)(flag2 ? 1 : 0);
+                t = ended ? 1f : 0f;
             }
 
             float fov = Mathf.Lerp(currentKnot.fov, nextKnot.fov, t);
@@ -279,16 +296,45 @@ namespace CinematicCameraExtended
             float distance2 = nextKnot.size * (1f - nextKnot.height / CameraDirector.cameraController.m_maxDistance) / Mathf.Tan(0.0174532924f * fov);
             float distance = Mathf.Lerp(distance1, distance2, t);
 
-            Quaternion rotation = Spline.CalculateSplineRotationEuler(knots.m_buffer, knots.m_size, num, t);
-            Vector3 position = Spline.CalculateSplinePosition(knots.m_buffer, knots.m_size, num, t) + rotation * new Vector3(0f, 0f, -distance);
+            Quaternion rotation = Spline.CalculateSplineRotationEuler(knots.m_buffer, knots.m_size, index, t);
+            Vector3 position = Spline.CalculateSplinePosition(knots.m_buffer, knots.m_size, index, t) + rotation * new Vector3(0f, 0f, -distance);
 
             camera.transform.position = position;
             camera.transform.rotation = rotation;
             camera.fieldOfView = fov;
 
+            float size = Mathf.Lerp(currentKnot.size, nextKnot.size, t);
+
+            if (m_tiltShift != null)
+            {
+                m_tiltShift.enabled = !CameraDirector.cameraController.isTiltShiftDisabled;
+                m_tiltShift.m_BlurArea = Mathf.Lerp(CameraDirector.cameraController.m_MaxTiltShiftArea, CameraDirector.cameraController.m_MinTiltShiftArea, Mathf.Clamp((size - CameraDirector.cameraController.m_minDistance) / CameraDirector.cameraController.m_MaxTiltShiftDistance, 0f, 1f)) * tiltShiftAmount;
+                m_tiltShift.m_MaxBlurSize = /*CameraDirector.cameraController.m_DefaultMaxBlurSize*/ 5f * tiltShiftAmount;
+            }
+
+            if (m_depthOfField != null)
+            {
+                m_depthOfField.enabled = !CameraDirector.cameraController.isDepthOfFieldDisabled;
+
+                if (DOFMode == 2)
+                {
+                    m_depthOfField.blurType = DepthOfField.BlurType.DiscBlur;
+                }
+                else if (DOFMode == 3)
+                {
+                    m_depthOfField.blurType = DepthOfField.BlurType.DX11;
+                }
+
+                float doftime = Mathf.Clamp((size - CameraDirector.cameraController.m_minDistance) / CameraDirector.cameraController.m_MaxTiltShiftDistance, 0f, 1f);
+                m_depthOfField.focalLength = size + CameraDirector.cameraController.m_FocalLength.Evaluate(doftime);
+                m_depthOfField.focalSize = CameraDirector.cameraController.m_FocalSize.Evaluate(doftime);
+                m_depthOfField.aperture = CameraDirector.cameraController.m_Aperture.Evaluate(doftime);
+                m_depthOfField.maxBlurSize = CameraDirector.cameraController.m_MaxBlurSize.Evaluate(doftime) * tiltShiftAmount;
+            }
+
             time += Time.deltaTime;
             timeOut = time;
-            return flag;
+            return result;
         }
 
         public static float EaseInOutQuad(float t, float b, float c, float d)
@@ -333,13 +379,80 @@ namespace CinematicCameraExtended
             CameraDirector.mainWindow.fovSlider.value = knot.fov * 2f;
         }
 
-        public static float NormalizeAngle(float angle)
+        public void Serialize(string filename)
         {
-            if (angle > 180f)
+            string fullPath = Path.Combine(CinematicCameraExtended.saveFolder, filename + ".xml");
+            try
             {
-                angle -= 360f;
+                if (!Directory.Exists(CinematicCameraExtended.saveFolder))
+                {
+                    Directory.CreateDirectory(CinematicCameraExtended.saveFolder);
+                }
+
+                List<Knot> knotList = new List<Knot>();
+
+                for (int i = 0; i < knots.m_size; i++)
+                {
+                    knotList.Add((Knot)knots.m_buffer[i]);
+                }
+
+                using (FileStream stream = new FileStream(fullPath, FileMode.OpenOrCreate))
+                {
+                    stream.SetLength(0); // Emptying the file !!!
+                    XmlSerializer xmlSerializer = new XmlSerializer(knotList.GetType());
+                    xmlSerializer.Serialize(stream, knotList);
+                    DebugUtils.Log("Path saved");
+                }
             }
-            return angle;
+            catch (Exception e)
+            {
+                DebugUtils.Warning("Couldn't save path at \"" + fullPath + "\"");
+                DebugUtils.LogException(e);
+            }
+        }
+
+        public void Deserialize(string filename)
+        {
+            string fullPath = Path.Combine(CinematicCameraExtended.saveFolder, filename + ".xml");
+            if (File.Exists(fullPath))
+            {
+
+                List<Knot> knotList = new List<Knot>();
+                try
+                {
+                    // Trying to Deserialize the configuration file
+                    using (FileStream stream = new FileStream(fullPath, FileMode.Open))
+                    {
+                        XmlSerializer xmlSerializer = new XmlSerializer(knotList.GetType());
+                        knotList = xmlSerializer.Deserialize(stream) as List<Knot>;
+                    }
+                }
+                catch (Exception e)
+                {
+                    // Couldn't Deserialize (XML malformed?)
+                    DebugUtils.Warning("Couldn't load path (XML malformed?)");
+                    DebugUtils.LogException(e);
+                }
+
+                if (knotList != null)
+                {
+                    knots.Clear();
+                    foreach (Knot knot in knotList)
+                    {
+                        knots.Add(knot);
+                    }
+                }
+            }
+
+        }
+
+        public void Delete(string filename)
+        {
+            string fullPath = Path.Combine(CinematicCameraExtended.saveFolder, filename + ".xml");
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
         }
     }
 }

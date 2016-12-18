@@ -15,6 +15,7 @@ namespace CinematicCameraExtended.GUI
         public UIButton addKnotButton;
         public UIButton playButton;
         public UISlider timelineSlider;
+        public UIDropDown playSpeedDropDown;
 
         public UISlider fovSlider;
         public UITextField fovInput;
@@ -28,6 +29,21 @@ namespace CinematicCameraExtended.GUI
 
         public UIButton saveLoadButton;
 
+        public UISaveLoadWindow saveLoadWindow;
+
+        public float playSpeed
+        {
+            get
+            {
+                if(playSpeedDropDown.selectedIndex < 4)
+                {
+                    return 1 / (Mathf.Pow(2, 4 - playSpeedDropDown.selectedIndex));
+                }
+
+                return Mathf.Pow(2, playSpeedDropDown.selectedIndex - 4);
+            }
+        }
+
         public override void Start()
         {
             name = "CCX_MainWindow";
@@ -39,6 +55,27 @@ namespace CinematicCameraExtended.GUI
             UIDragHandle dragHandle = AddUIComponent<UIDragHandle>();
             dragHandle.target = parent;
             dragHandle.relativePosition = Vector3.zero;
+
+            UIButton close = AddUIComponent<UIButton>();
+            close.size = new Vector2(30f, 30f);
+            close.text = "X";
+            close.textScale = 0.9f;
+            close.textColor = new Color32(118, 123, 123, 255);
+            close.focusedTextColor = new Color32(118, 123, 123, 255);
+            close.hoveredTextColor = new Color32(140, 142, 142, 255);
+            close.pressedTextColor = new Color32(99, 102, 102, 102);
+            close.textPadding = new RectOffset(8, 8, 8, 8);
+            close.canFocus = false;
+            close.playAudioEvents = true;
+            close.relativePosition = new Vector3(width - close.width, 0);
+
+            close.eventClicked += (c, p) =>
+            {
+                if (isVisible)
+                {
+                    CameraDirector.ToggleUI();
+                }
+            };
 
             // Control panel
             UILabel label = AddUIComponent<UILabel>();
@@ -71,9 +108,27 @@ namespace CinematicCameraExtended.GUI
             playButton.relativePosition = new Vector3(controlPanel.width - playButton.width - 8, 8);
             playButton.tooltip = "Play the current path";
 
+            playSpeedDropDown = UIUtils.CreateDropDown(controlPanel);
+            playSpeedDropDown.width = 75;
+            playSpeedDropDown.items = new string[]
+            {
+                "x 1/16",
+                "x 1/8",
+                "x 1/4",
+                "x 1/2",
+                "x 1",
+                "x 2",
+                "x 4",
+                "x 8",
+                "x 16"
+            };
+            playSpeedDropDown.selectedValue = "x 1";
+            playSpeedDropDown.relativePosition = new Vector3(playButton.relativePosition.x - playSpeedDropDown.width - 8, 8);
+            playSpeedDropDown.tooltip = "Playback speed";
+
             timelineSlider = controlPanel.AddUIComponent<UISlider>();
             timelineSlider.name = "CCX_TimelineSlider";
-            timelineSlider.size = new Vector2(playButton.relativePosition.x - addKnotButton.relativePosition.x - addKnotButton.width - 20, 18);
+            timelineSlider.size = new Vector2(playSpeedDropDown.relativePosition.x - addKnotButton.relativePosition.x - addKnotButton.width - 20, 18);
             timelineSlider.relativePosition = new Vector2(addKnotButton.relativePosition.x + addKnotButton.width + 10, 14);
 
             UISlicedSprite bgSlider = timelineSlider.AddUIComponent<UISlicedSprite>();
@@ -199,13 +254,13 @@ namespace CinematicCameraExtended.GUI
             saveLoadButton.name = "CCX_SaveLoadButton";
             saveLoadButton.text = "Save/Load";
             saveLoadButton.size = new Vector2(100f, 30f);
-            saveLoadButton.isEnabled = false;
             saveLoadButton.relativePosition = new Vector3(width - saveLoadButton.width - 8, fastList.relativePosition.y + fastList.height + 8);
             saveLoadButton.tooltip = "Work in progress";
 
             height = saveLoadButton.relativePosition.y + saveLoadButton.height + 8;
             dragHandle.size = size;
             absolutePosition = new Vector3(savedWindowX.value, savedWindowY.value);
+            MakePixelPerfect();
 
             addKnotButton.eventClicked += (c, p) =>
             {
@@ -303,7 +358,29 @@ namespace CinematicCameraExtended.GUI
                 }
             };
 
+            saveLoadButton.eventClicked += (c, p) =>
+            {
+                if(saveLoadWindow == null)
+                {
+                    saveLoadWindow = (UISaveLoadWindow)GetUIView().AddUIComponent(typeof(UISaveLoadWindow));
+                }
+                else
+                {
+                    Destroy(saveLoadWindow);
+                }
+            };
+
             DebugUtils.Log("UIMainWindow created");
+        }
+
+        protected override void OnVisibilityChanged()
+        {
+            base.OnVisibilityChanged();
+
+            if(saveLoadWindow != null)
+            {
+                saveLoadWindow.isVisible = isVisible;
+            }
         }
 
         protected override void OnPositionChanged()
@@ -313,6 +390,7 @@ namespace CinematicCameraExtended.GUI
             if (absolutePosition.x == -1000)
             {
                 absolutePosition = new Vector2((resolution.x - width) / 2, (resolution.y - height) / 2);
+                MakePixelPerfect();
             }
 
             absolutePosition = new Vector2(

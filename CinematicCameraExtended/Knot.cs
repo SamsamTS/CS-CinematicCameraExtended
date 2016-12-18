@@ -1,5 +1,7 @@
 using UnityEngine;
 
+using System.ComponentModel;
+
 namespace CinematicCameraExtended
 {
     public enum EasingMode
@@ -18,10 +20,14 @@ namespace CinematicCameraExtended
         public float size;
         public float height;
 
+        [DefaultValue(2f)]
         public float duration = 2f;
+        [DefaultValue(0f)]
         public float delay;
+        [DefaultValue(45f)]
         public float fov;
 
+        [DefaultValue(EasingMode.Auto)]
         public EasingMode mode = EasingMode.Auto;
 
         public Knot()

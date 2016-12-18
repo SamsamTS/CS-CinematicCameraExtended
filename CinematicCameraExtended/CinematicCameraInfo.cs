@@ -56,6 +56,6 @@ namespace CinematicCameraExtended
             }
         }
 
-        public const string version = "0.4.0";
+        public const string version = "0.5.0";
     }
 }
