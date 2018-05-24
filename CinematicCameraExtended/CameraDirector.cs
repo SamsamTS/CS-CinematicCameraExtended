@@ -89,7 +89,7 @@ namespace CinematicCameraExtended
 
         public static void ToggleUI()
         {
-            if (cameraPath.playBack)
+            if (CameraPath.playBack)
             {
                 DebugUtils.Log("Stopping playback");
                 cameraPath.Stop();

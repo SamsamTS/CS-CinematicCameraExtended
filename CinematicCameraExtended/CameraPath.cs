@@ -16,10 +16,8 @@ namespace CinematicCameraExtended
     {
         public FastList<object> knots = new FastList<object>();
 
-        public bool playBack;
-        public float time;
-
-        public bool stopping;
+        public static bool playBack;
+        public static float time;
 
         public static float scrubTime;
         public static Knot currentTransfrom;
@@ -305,13 +303,26 @@ namespace CinematicCameraExtended
 
             float size = Mathf.Lerp(currentKnot.size, nextKnot.size, t);
 
+            ChangeTiltShift(size);
+            ChangeDoF(size);
+
+            time += Time.deltaTime;
+            timeOut = time;
+            return result;
+        }
+
+        public static void ChangeTiltShift(float size)
+        {
             if (m_tiltShift != null)
             {
                 m_tiltShift.enabled = !CameraDirector.cameraController.isTiltShiftDisabled;
                 m_tiltShift.m_BlurArea = Mathf.Lerp(CameraDirector.cameraController.m_MaxTiltShiftArea, CameraDirector.cameraController.m_MinTiltShiftArea, Mathf.Clamp((size - CameraDirector.cameraController.m_minDistance) / CameraDirector.cameraController.m_MaxTiltShiftDistance, 0f, 1f)) * tiltShiftAmount;
                 m_tiltShift.m_MaxBlurSize = /*CameraDirector.cameraController.m_DefaultMaxBlurSize*/ 5f * tiltShiftAmount;
             }
+        }
 
+        public static void ChangeDoF(float size)
+        {
             if (m_depthOfField != null)
             {
                 m_depthOfField.enabled = !CameraDirector.cameraController.isDepthOfFieldDisabled;
@@ -331,10 +342,6 @@ namespace CinematicCameraExtended
                 m_depthOfField.aperture = CameraDirector.cameraController.m_Aperture.Evaluate(doftime);
                 m_depthOfField.maxBlurSize = CameraDirector.cameraController.m_MaxBlurSize.Evaluate(doftime) * tiltShiftAmount;
             }
-
-            time += Time.deltaTime;
-            timeOut = time;
-            return result;
         }
 
         public static float EaseInOutQuad(float t, float b, float c, float d)

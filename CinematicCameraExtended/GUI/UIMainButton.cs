@@ -35,7 +35,7 @@ namespace CinematicCameraExtended.GUI
 
             if (savedX.value == -1000)
             {
-                absolutePosition = new Vector2(freeCameraButton.absolutePosition.x - width - 5, freeCameraButton.absolutePosition.y);
+                absolutePosition = new Vector2(freeCameraButton.absolutePosition.x - 2 * width - 19, freeCameraButton.absolutePosition.y);
             }
             else
             {
